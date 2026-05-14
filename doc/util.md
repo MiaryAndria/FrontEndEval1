@@ -25,5 +25,8 @@ Exemple
             fonction  à faire à l'interieur 
             }
 
-    
+## Pour image
 npm install jszip
+
+# pour css 
+npm install lucide-react

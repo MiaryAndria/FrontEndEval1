@@ -32,6 +32,7 @@ const updateCartItem = async (itemId, quantity) => {
         })
         if (response.data.data) {
             setPanier(response.data.data)
+            window.dispatchEvent(new CustomEvent('cart-updated'))
             setMessage('Panier mis à jour')
             setTimeout(() => setMessage(''), 3000)
         }
@@ -45,7 +46,7 @@ const deleteProduct = async (itemId) => {
     try {
         await api_client.delete(`/customer/cart/remove/${itemId}`)
         console.log("Produit supprimé du panier")
-        
+        window.dispatchEvent(new CustomEvent('cart-updated'))
         fetchPanier()
 
     } catch (error) {

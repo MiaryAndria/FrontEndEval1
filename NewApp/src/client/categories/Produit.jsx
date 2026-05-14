@@ -30,6 +30,7 @@ function ProduitCategorie() {
                 is_buy_now:0
                 
             })
+            window.dispatchEvent(new CustomEvent('cart-updated'))
             fetchProduits()
 
         } catch (error) {
@@ -54,6 +55,7 @@ function ProduitCategorie() {
             
             await api_client.post(`/customer/wishlist/${produitId}`, {                
             })
+            window.dispatchEvent(new CustomEvent('wishlist-updated'))
             fetchProduits()
 
         } catch (error) {
@@ -77,10 +79,6 @@ function ProduitCategorie() {
     return (
         
         <div className="client-container">
-            <button className="btn btn-primary mt-20" onClick={() => navigate('/WishList')}>Acceder Wishlist</button>
-            <button className="btn btn-primary mt-20" onClick={() => navigate('/Commande')}>Acceder mes commandes</button>
-            <button className="btn btn-primary mt-20" onClick={() => navigate('/Panier')}>Acceder panier</button>
-            
             <h1>Collection {id}</h1>
 
             {message && <p className="stock-badge">{message}</p>}

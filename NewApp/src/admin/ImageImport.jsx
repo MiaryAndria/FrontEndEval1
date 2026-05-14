@@ -9,7 +9,7 @@ function ImageImport() {
     const [message, setMessage] = useState('')
     const [zipFile, setZipFile] = useState(null)
     const [results, setResults] = useState([])
-
+    const [progress, setProgress] = useState(0)
 
     const buildCategoryMap = async () => {
         const productCatMap = {}
@@ -41,6 +41,7 @@ function ImageImport() {
     const importImages = async () => {
         if (!zipFile) return
         setLoading(true)
+        setProgress(0)
         setMessage('Extraction du ZIP...')
         setResults([])
         const logs = []
@@ -59,27 +60,29 @@ function ImageImport() {
                 imageFiles[sku] = { entry, fileName, ext }
             }
 
-            logs.push({ sku: '---', status: 'info', msg: `${Object.keys(imageFiles).length} images trouvées dans le ZIP` })
-            if (Object.keys(imageFiles).length === 0) {
+            const totalFiles = Object.keys(imageFiles).length
+            logs.push({ sku: '---', status: 'info', msg: `${totalFiles} images trouvées dans le ZIP` })
+            
+            if (totalFiles === 0) {
                 setMessage('Aucune image trouvée dans le ZIP')
                 setLoading(false)
                 return
             }
 
-            // setMessage('Chargement des produits...')
             const productsRes = await api_admin.get('/admin/catalog/products')
             const products = productsRes.data.data
 
-            // setMessage('Construction de la map catégories via API client...')
             const productCatMap = await buildCategoryMap()
             console.log('[MAP] productCatMap final:', productCatMap)
 
-            // setMessage('Upload des images...')
+            let processedCount = 0
 
             for (const [sku, imgData] of Object.entries(imageFiles)) {
                 const product = products.find(p => p.sku === sku)
                 if (!product) {
                     logs.push({ sku, status: 'error', msg: 'Produit introuvable' })
+                    processedCount++
+                    setProgress(Math.round((processedCount / totalFiles) * 100))
                     continue
                 }
 
@@ -88,6 +91,8 @@ function ImageImport() {
 
                 if (catIds.length === 0) {
                     logs.push({ sku, status: 'error', msg: 'Aucune catégorie trouvée — upload annulé' })
+                    processedCount++
+                    setProgress(Math.round((processedCount / totalFiles) * 100))
                     continue
                 }
 
@@ -126,6 +131,9 @@ function ImageImport() {
                     console.error(`Erreur upload ${sku}:`, e.response?.data || e.message)
                     logs.push({ sku, status: 'error', msg: e.response?.data?.message || e.message })
                 }
+                
+                processedCount++
+                setProgress(Math.round((processedCount / totalFiles) * 100))
             }
 
             setMessage('Importation des images terminée !')
@@ -136,35 +144,53 @@ function ImageImport() {
 
         setResults(logs)
         setLoading(false)
+        setProgress(0)
     }
 
     return (
-        <div className="import-container">
-            <h1 className="import-title">Importation Images Produits (ZIP)</h1>
-
-            {message && (
-                <div className={`import-message ${message.includes('Erreur') ? 'error' : 'success'}`}>
-                    {message}
-                </div>
-            )}
-
-            <div className="import-config">
-                <div className="file-list">
-                    <div className="file-row">
-                        <label>Fichier ZIP :</label>
-                        <input type="file" accept=".zip" onChange={(e) => setZipFile(e.target.files[0])} />
-                    </div>
-                </div>
+        <div style={{ maxWidth: '600px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+            <div style={{ textAlign: 'center' }}>
+                <h1>Import Images</h1>
+                <p>Mettez en ligne un fichier ZIP contenant les images de vos produits</p>
             </div>
 
-            <button className="btn-import" onClick={importImages} disabled={loading || !zipFile}>
-                {loading ? 'Traitement...' : 'IMPORTER LES IMAGES'}
-            </button>
+            <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                {message && (
+                    <div className={`alert ${message.includes('Erreur') ? 'alert-error' : ''}`}>
+                        {message}
+                    </div>
+                )}
+
+                <div className="form-group">
+                    <label>Fichier ZIP (.zip)</label>
+                    <input 
+                        type="file" 
+                        accept=".zip" 
+                        onChange={(e) => setZipFile(e.target.files[0])}
+                        className="input-field"
+                    />
+                </div>
+
+                {loading && progress > 0 && (
+                    <div style={{ width: '100%', backgroundColor: 'var(--border-color)', borderRadius: '999px', height: '8px', overflow: 'hidden' }}>
+                        <div style={{ width: `${progress}%`, backgroundColor: 'var(--primary-color)', height: '100%', transition: 'width 0.3s ease' }}></div>
+                    </div>
+                )}
+
+                <button 
+                    className="btn btn-primary" 
+                    onClick={importImages} 
+                    disabled={loading || !zipFile}
+                    style={{ width: '100%' }}
+                >
+                    {loading ? `Traitement en cours... ${progress}%` : 'LANCER L\'IMPORT'}
+                </button>
+            </div>
 
             {results.length > 0 && (
-                <div style={{ marginTop: '1rem' }}>
+                <div className="card">
                     {results.map((r, i) => (
-                        <div key={i} style={{ color: r.status === 'success' ? 'green' : r.status === 'error' ? 'red' : 'gray' }}>
+                        <div key={i} style={{ color: r.status === 'success' ? '#059669' : r.status === 'error' ? '#dc2626' : '#6b7280', padding: '0.25rem 0' }}>
                             [{r.sku}] {r.msg}
                         </div>
                     ))}

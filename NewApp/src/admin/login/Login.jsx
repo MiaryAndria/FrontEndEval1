@@ -1,17 +1,17 @@
 import api_admin from '../../api/api_admin'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import '../css/admin_style.css'
+import { ShieldCheck } from 'lucide-react'
 
-function Login() {
+function LoginAdmin() {
     const navigate = useNavigate()
     const [email] = useState('admin@example.com')
     const [password] = useState('admin123') 
     const [error, setError] = useState('')
 
-    const handleLogin = async () => {
+    const handleLogin = async (e) => {
+        e.preventDefault()
         try {
-
             const response = await api_admin.post('/admin/login', {
                 email: email,
                 password: password,
@@ -27,21 +27,24 @@ function Login() {
     }
 
     return (
-        <div className="login-wrapper">
+        <div className="login-container">
             <div className="login-card">
-                <h2>Administration</h2>
-                <p>Système d'importation - Accès sécurisé</p>
+                <div className="login-header">
+                    <h1>Administration</h1>
+                    <p>Système de gestion - Accès sécurisé</p>
+                </div>
 
-                {error && <div className="error-message" style={{ textAlign: 'center' }}>{error}</div>}
+                {error && <div className="alert alert-error">{error}</div>}
 
-                <div className="login-form">
+                <form onSubmit={handleLogin}>
                     <div className="form-group">
-                        <label>Email</label>
+                        <label>Email Admin</label>
                         <input 
                             type="text" 
+                            className="input-field"
                             value={email} 
                             readOnly
-                            style={{ backgroundColor: '#f9f9f9', cursor: 'not-allowed' }}
+                            style={{ backgroundColor: '#f1f5f9', cursor: 'not-allowed', color: '#64748b' }}
                         />
                     </div>
                     
@@ -49,19 +52,21 @@ function Login() {
                         <label>Mot de passe</label>
                         <input 
                             type="password" 
+                            className="input-field"
                             value="••••••••"
                             readOnly 
-                            style={{ backgroundColor: '#f9f9f9', cursor: 'not-allowed' }}
+                            style={{ backgroundColor: '#f1f5f9', cursor: 'not-allowed', color: '#64748b' }}
                         />
                     </div>
 
-                    <button className="btn-login" onClick={handleLogin}>
-                        SE CONNECTER EN TANT QU'ADMIN
+                    <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }}>
+                        <ShieldCheck size={18} />
+                        ACCÈS ADMINISTRATEUR
                     </button>
-                </div>
+                </form>
             </div>
         </div>
     )
 }
 
-export default Login
+export default LoginAdmin

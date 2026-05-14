@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import api_admin from '../../api/api_admin'
-import api_node from '../../api/api_node'
 import '../css/admin_style.css'
 
 function CommandeAdmin() {
@@ -22,7 +20,7 @@ function CommandeAdmin() {
 
     const ShipOrder = async (order) => {
         try {
-            const items = []
+            const items = {}
             order.items.forEach(item => {
                 items[item.id] = {
                     1: item.qty_ordered
@@ -50,8 +48,8 @@ function CommandeAdmin() {
     }
 
     const InvoiceOrder = async (order) => {
-    try {
-            const items = []
+        try {
+            const items = {}
             order.items.forEach(item => {
                 items[item.id] = item.qty_to_invoice || item.qty_ordered
             })
@@ -80,53 +78,73 @@ function CommandeAdmin() {
     if (loading) return <div className="loading-container">Chargement...</div>
 
     return (
-        <div className="admin-container">
-            <div className="admin-header">
-                <h1 className="admin-title">Commandes</h1>
+        <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                <h1 style={{ margin: 0 }}>Gestion des Commandes</h1>
+                <span style={{ color: 'var(--text-muted)' }}>{commandes.length} commandes trouvées</span>
             </div>
 
             {message && (
-                <div className={`message-box ${message.includes('Erreur') ? 'error' : 'success'}`}>
+                <div className={`alert ${message.includes('Erreur') ? 'alert-error' : ''}`} style={{ backgroundColor: message.includes('Erreur') ? '' : '#ecfdf5', color: message.includes('Erreur') ? '' : '#059669', border: message.includes('Erreur') ? '' : '1px solid #a7f3d0' }}>
                     {message}
                 </div>
             )}
 
-            <div className="order-grid">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
                 {commandes.map(order => (
-                    <div key={order.id} className="order-card">
-                        <div className="card-header">
-                            <span className="order-number">ORD-{order.increment_id}</span>
-                            <span className={`status-badge status-${order.status}`}>
+                    <div key={order.id} className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ fontWeight: '600', color: 'var(--primary-color)' }}>ORD-{order.increment_id}</span>
+                            <span style={{ 
+                                padding: '0.25rem 0.5rem', 
+                                borderRadius: '999px', 
+                                fontSize: '0.75rem', 
+                                fontWeight: '600',
+                                backgroundColor: order.status === 'completed' ? '#ecfdf5' : order.status === 'pending' ? '#fffbeb' : '#f8fafc',
+                                color: order.status === 'completed' ? '#059669' : order.status === 'pending' ? '#d97706' : '#64748b'
+                            }}>
                                 {order.status_label}
                             </span>
                         </div>
 
-                        <h2 className="customer-name">{order.customer_first_name} {order.customer_last_name}</h2>
-                        <p className="customer-email">{order.customer_email}</p>
+                        <div>
+                            <h3 style={{ margin: '0 0 0.25rem 0' }}>{order.customer_first_name} {order.customer_last_name}</h3>
+                            <p style={{ margin: 0, fontSize: '0.875rem' }}>{order.customer_email}</p>
+                        </div>
 
-                        <div className="card-divider"></div>
+                        <div style={{ height: '1px', backgroundColor: 'var(--border-color)', margin: '0.5rem 0' }}></div>
 
-                        <div className="order-stats">
-                            <div className="stat-group">
-                                <span className="stat-label">Articles</span>
-                                <span className="stat-value">{order.total_item_count}</span>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <span style={{ color: 'var(--text-muted)' }}>Articles</span>
+                                <strong>{order.total_item_count}</strong>
                             </div>
-                            <div className="stat-group">
-                                <span className="stat-label">Total</span>
-                                <span className="stat-value">{order.formatted_grand_total}</span>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                                <span style={{ color: 'var(--text-muted)' }}>Total</span>
+                                <strong>{order.formatted_grand_total}</strong>
                             </div>
                         </div>
 
-                        <div className="order-date">
-                            {new Date(order.created_at).toLocaleDateString('fr-FR')}
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textAlign: 'right' }}>
+                            {new Date(order.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
                         </div>
 
-                        <div className="order-actions">
-                            <button className="btn-minimal" onClick={() => ShipOrder(order)}disabled={order.status === 'completed' || order.status === 'shipped'}>
-                                Envoyer
+                        <div style={{ display: 'flex', gap: '0.5rem', marginTop: 'auto', paddingTop: '1rem' }}>
+                            <button 
+                                className="btn btn-outline" 
+                                style={{ flex: 1, padding: '0.5rem' }} 
+                                onClick={() => ShipOrder(order)} 
+                                disabled={order.status === 'completed' || order.status === 'shipped' || order.status === 'closed'}
+                            >
+                                Expédier
                             </button>
-                            <button className="btn-minimal" onClick={() => InvoiceOrder(order)}disabled={order.status === 'completed' || order.status === 'pending'}>
-                                Payer
+                            <button 
+                                className="btn btn-primary" 
+                                style={{ flex: 1, padding: '0.5rem' }} 
+                                onClick={() => InvoiceOrder(order)} 
+                                disabled={order.status === 'completed' || order.status === 'closed'}
+                            >
+                                Facturer
                             </button>
                         </div>
                     </div>
@@ -134,8 +152,8 @@ function CommandeAdmin() {
             </div>
 
             {commandes.length === 0 && !loading && (
-                <div style={{ textAlign: 'center', marginTop: '60px', color: '#ccc' }}>
-                    <p style={{ fontSize: '18px' }}>Aucune commande trouvée.</p>
+                <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '1.125rem' }}>Aucune commande trouvée.</p>
                 </div>
             )}
         </div>

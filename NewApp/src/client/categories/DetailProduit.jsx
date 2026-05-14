@@ -37,6 +37,7 @@ function DetailProduit() {
                 is_buy_now:0
                 
             })
+            window.dispatchEvent(new CustomEvent('cart-updated'))
             fetchDetailProduit()
 
         } catch (error) {
@@ -66,9 +67,7 @@ function DetailProduit() {
 
     return (
         <div className="client-container">
-            <button className="btn btn-primary mt-20" onClick={() => navigate('/WishList')}>Acceder Wishlist</button>
-            <button className="btn btn-primary mt-20" onClick={() => navigate('/Commande')}>Acceder mes commandes</button>
-            <button className="btn btn-primary mt-20" onClick={() => navigate('/Panier')}>Acceder panier</button>
+
             <div className="detail-layout">
                 {/* Section Image */}
                 <div className="detail-image-container">

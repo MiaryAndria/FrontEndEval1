@@ -32,9 +32,7 @@ function List() {
 
     return (
         <div className="client-container">
-            <button className="btn btn-primary mt-20" onClick={() => navigate('/WishList')}>Acceder Wishlist</button>
-            <button className="btn btn-primary mt-20" onClick={() => navigate('/Commande')}>Acceder mes commandes</button>
-            <button className="btn btn-primary mt-20" onClick={() => navigate('/Panier')}>Acceder panier</button>
+
             <h1>Nos Catégories</h1>
 
             {message && <p className="stock-badge">{message}</p>}

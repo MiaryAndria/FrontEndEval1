@@ -99,6 +99,8 @@ function ValiderCommande() {
             const response = await api_client.post('/customer/checkout/save-order')
             
             if (response.data.data) {
+                window.dispatchEvent(new CustomEvent('cart-updated'))
+                window.dispatchEvent(new CustomEvent('orders-updated'))
                 setMessage('Commande enregistrée avec succès !')
                 setTimeout(() => navigate('/commande'), 3000)
             }

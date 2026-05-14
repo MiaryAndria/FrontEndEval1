@@ -319,9 +319,7 @@ function ImportData() {
         }
     }
 
-    const ImportCommande = async (allClients = []) => {
-        if (!file2) return;
-        const rows = parseCSV(await readFile(file2));
+    const ImportCommande = async (rows, allClients = [], progressTracker) => {
         setImportedOrders(rows);
 
         const grouped = rows.reduce((acc, row) => {
@@ -355,21 +353,43 @@ function ImportData() {
 
                 for (const row of clientRows) {
                     await ProcessOrderLine(row, clientInfo);
+                    if (progressTracker) progressTracker.increment();
                 }
             } catch (err) { }
         }
     }
 
+    const [progress, setProgress] = useState(0)
+
     const ImportData = async () => {
         setLoading(true);
-        setMessage('Importation en cours...');
+        setProgress(0);
+        setMessage('Lecture des fichiers...');
         try {
-            if (file1) {
-                const rows = parseCSV(await readFile(file1));
-                setImportedProducts(rows);
+            let rows1 = [];
+            let rows2 = [];
+            let rows3 = [];
+            
+            if (file1) rows1 = parseCSV(await readFile(file1));
+            if (file2) rows2 = parseCSV(await readFile(file2));
+            if (file3) rows3 = parseCSV(await readFile(file3));
+
+            const totalRows = rows1.length + rows2.length + rows3.length;
+            let processedRows = 0;
+
+            const incrementProgress = () => {
+                processedRows++;
+                setProgress(Math.round((processedRows / totalRows) * 100));
+            };
+
+            const progressTracker = { increment: incrementProgress };
+
+            if (file1 && rows1.length > 0) {
+                setMessage('Importation des produits et catégories...');
+                setImportedProducts(rows1);
 
                 const uniqueCats = [...new Set(
-                    rows.map(r => getVal(r, 'Categorie', 'categorie', 'category', 'cat'))
+                    rows1.map(r => getVal(r, 'Categorie', 'categorie', 'category', 'cat'))
                         .filter(c => c)
                 )];
                 setImportedCategories(uniqueCats.map(name => ({ name })));
@@ -379,48 +399,109 @@ function ImportData() {
                     const catId = await InsertCategorie(cat);
                     if (catId) categoryMap[cat] = catId;
                 }
-                for (const row of rows) {
+                for (const row of rows1) {
                     const catName = getVal(row, 'Categorie', 'categorie', 'category', 'cat');
                     await InsertProduit(row, categoryMap[catName]);
+                    progressTracker.increment();
                 }
             }
+
             let clients = [];
-            if (file3) {
-                clients = parseCSV(await readFile(file3));
+            if (file3 && rows3.length > 0) {
+                setMessage('Importation des clients...');
+                clients = rows3;
                 setImportedClients(clients);
-                for (const row of clients) await InsertClient(row);
+                for (const row of clients) {
+                    await InsertClient(row);
+                    progressTracker.increment();
+                }
             }
-            if (file2) await ImportCommande(clients);
+
+            if (file2 && rows2.length > 0) {
+                setMessage('Importation des commandes...');
+                await ImportCommande(rows2, clients, progressTracker);
+            }
+            
             setMessage('Importation terminée avec succès !');
         } catch (error) {
             setMessage("Erreur : " + error.message);
         }
         setLoading(false);
+        setProgress(0);
     }
 
     return (
-        <div className="import-container">
-            <h1 className="import-title">Importation CSV Robuste</h1>
-            {message && <div className={`import-message ${message.includes('Erreur') ? 'error' : 'success'}`}>{message}</div>}
-            <div className="import-config">
+        <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+            <div style={{ textAlign: 'center' }}>
+                <h1>Import CSV</h1>
+                <p style={{ color: 'var(--text-muted)' }}>Mettez en ligne vos fichiers CSV pour importer produits, clients et commandes.</p>
+            </div>
+
+            {message && (
+                <div className={`alert ${message.includes('Erreur') ? 'alert-error' : ''}`} style={{ backgroundColor: message.includes('Erreur') ? '' : '#ecfdf5', color: message.includes('Erreur') ? '' : '#059669', border: message.includes('Erreur') ? '' : '1px solid #a7f3d0' }}>
+                    {message}
+                </div>
+            )}
+
+            <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                 <div className="form-group">
-                    <label>Séparateur :</label>
-                    <select className="form-select" value={separator} onChange={(e) => setSeparator(e.target.value)}>
+                    <label>Séparateur</label>
+                    <select className="input-field" value={separator} onChange={(e) => setSeparator(e.target.value)}>
                         <option value="auto">Auto</option>
                         <option value=",">Virgule (,)</option>
                         <option value=";">Point-virgule (;)</option>
                         <option value={"\t"}>Tabulation</option>
                     </select>
                 </div>
-                <div className="file-list">
-                    <div className="file-row"><label>1. Produits :</label><input type="file" onChange={(e) => setFile1(e.target.files[0])} /></div>
-                    <div className="file-row"><label>2. Clients :</label><input type="file" onChange={(e) => setFile3(e.target.files[0])} /></div>
-                    <div className="file-row"><label>3. Commandes :</label><input type="file" onChange={(e) => setFile2(e.target.files[0])} /></div>
+                
+                <div style={{ height: '1px', backgroundColor: 'var(--border-color)', margin: '0.5rem 0' }}></div>
+
+                <div className="form-group">
+                    <label>1. Produits & Catégories (CSV)</label>
+                    <input 
+                        type="file" 
+                        accept=".csv" 
+                        onChange={(e) => setFile1(e.target.files[0])}
+                        className="input-field"
+                    />
                 </div>
+                
+                <div className="form-group">
+                    <label>2. Clients (CSV)</label>
+                    <input 
+                        type="file" 
+                        accept=".csv" 
+                        onChange={(e) => setFile3(e.target.files[0])}
+                        className="input-field"
+                    />
+                </div>
+
+                <div className="form-group">
+                    <label>3. Commandes (CSV)</label>
+                    <input 
+                        type="file" 
+                        accept=".csv" 
+                        onChange={(e) => setFile2(e.target.files[0])}
+                        className="input-field"
+                    />
+                </div>
+
+                {loading && progress > 0 && (
+                    <div style={{ width: '100%', backgroundColor: 'var(--border-color)', borderRadius: '999px', height: '8px', overflow: 'hidden', marginTop: '1rem' }}>
+                        <div style={{ width: `${progress}%`, backgroundColor: 'var(--primary-color)', height: '100%', transition: 'width 0.3s ease' }}></div>
+                    </div>
+                )}
+
+                <button 
+                    className="btn btn-primary" 
+                    onClick={ImportData} 
+                    disabled={loading || (!file1 && !file2 && !file3)}
+                    style={{ width: '100%', marginTop: '1rem', opacity: (loading || (!file1 && !file2 && !file3)) ? 0.7 : 1, cursor: (loading || (!file1 && !file2 && !file3)) ? 'not-allowed' : 'pointer' }}
+                >
+                    {loading ? `Traitement en cours... ${progress}%` : 'LANCER L\'IMPORTATION'}
+                </button>
             </div>
-            <button className="btn-import" onClick={ImportData} disabled={loading || (!file1 && !file2 && !file3)}>
-                {loading ? 'Traitement...' : 'IMPORTER TOUT'}
-            </button>
+            
             <ContentImport products={importedProducts} clients={importedClients} orders={importedOrders} categories={importedCategories} />
         </div>
     )
