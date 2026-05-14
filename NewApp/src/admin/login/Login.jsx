@@ -5,21 +5,24 @@ import '../css/admin_style.css'
 
 function Login() {
     const navigate = useNavigate()
-    const [email, setEmail] = useState('admin@example.com')
-    const [password, setPassword] = useState('admin123')
+    const [email] = useState('admin@example.com')
+    const [password] = useState('admin123') 
     const [error, setError] = useState('')
 
     const handleLogin = async () => {
         try {
+
             const response = await api_admin.post('/admin/login', {
                 email: email,
                 password: password,
-                device_name: 'newapp'
+                device_name:'newapp'
             })
+            
             localStorage.setItem('token_admin', response.data.token)
             navigate('/acceuil/admin')
         } catch (err) {
-            setError('Identifiants invalides')
+            setError('Erreur de connexion avec les identifiants prédéfinis')
+            console.log(err.response?.data)
         }
     }
 
@@ -27,7 +30,7 @@ function Login() {
         <div className="login-wrapper">
             <div className="login-card">
                 <h2>Administration</h2>
-                <p>Connectez-vous pour gérer vos commandes</p>
+                <p>Système d'importation - Accès sécurisé</p>
 
                 {error && <div className="error-message" style={{ textAlign: 'center' }}>{error}</div>}
 
@@ -37,8 +40,8 @@ function Login() {
                         <input 
                             type="text" 
                             value={email} 
-                            onChange={e => setEmail(e.target.value)} 
-                            placeholder="admin@example.com"
+                            readOnly
+                            style={{ backgroundColor: '#f9f9f9', cursor: 'not-allowed' }}
                         />
                     </div>
                     
@@ -46,14 +49,14 @@ function Login() {
                         <label>Mot de passe</label>
                         <input 
                             type="password" 
-                            value={password} 
-                            onChange={e => setPassword(e.target.value)} 
-                            placeholder="••••••••"
+                            value="••••••••"
+                            readOnly 
+                            style={{ backgroundColor: '#f9f9f9', cursor: 'not-allowed' }}
                         />
                     </div>
 
                     <button className="btn-login" onClick={handleLogin}>
-                        SE CONNECTER
+                        SE CONNECTER EN TANT QU'ADMIN
                     </button>
                 </div>
             </div>

@@ -1,0 +1,177 @@
+import { useState } from 'react'
+import JSZip from 'jszip'
+import api_admin from '../api/api_admin'
+import api_client from '../api/api_client'
+import './css/admin_style.css'
+
+function ImageImport() {
+    const [loading, setLoading] = useState(false)
+    const [message, setMessage] = useState('')
+    const [zipFile, setZipFile] = useState(null)
+    const [results, setResults] = useState([])
+
+
+    const buildCategoryMap = async () => {
+        const productCatMap = {}
+        try {
+            const catsRes = await api_admin.get('/admin/catalog/categories')
+            const allCats = catsRes.data.data || []
+    
+            for (const cat of allCats) {
+                if (cat.id === 1) continue
+                try {
+                    const res = await api_client.get(`/products?category_id=${cat.id}&sort=id&limit=200`)
+                    const prods = res.data.data || []
+                    prods.forEach(p => {
+                        if (!productCatMap[p.id]) productCatMap[p.id] = []
+                        if (!productCatMap[p.id].includes(cat.id)) {
+                            productCatMap[p.id].push(cat.id)
+                        }
+                    })
+                } catch (e) {
+                    console.warn(`[MAP] Erreur catégorie ${cat.id}:`, e.message)
+                }
+            }
+        } catch (e) {
+            console.error('[MAP] Erreur chargement catégories:', e.message)
+        }
+        return productCatMap
+    }
+
+    const importImages = async () => {
+        if (!zipFile) return
+        setLoading(true)
+        setMessage('Extraction du ZIP...')
+        setResults([])
+        const logs = []
+
+        try {
+            const zip = await JSZip.loadAsync(zipFile)
+            const imageFiles = {}
+
+            for (const [path, entry] of Object.entries(zip.files)) {
+                if (entry.dir) continue
+                if (path.includes('__MACOSX') || path.includes('._') || path.startsWith('.')) continue
+                const ext = path.split('.').pop().toLowerCase()
+                if (!['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext)) continue
+                const fileName = path.split('/').pop()
+                const sku = fileName.replace(/\.[^.]+$/, '')
+                imageFiles[sku] = { entry, fileName, ext }
+            }
+
+            logs.push({ sku: '---', status: 'info', msg: `${Object.keys(imageFiles).length} images trouvées dans le ZIP` })
+            if (Object.keys(imageFiles).length === 0) {
+                setMessage('Aucune image trouvée dans le ZIP')
+                setLoading(false)
+                return
+            }
+
+            // setMessage('Chargement des produits...')
+            const productsRes = await api_admin.get('/admin/catalog/products')
+            const products = productsRes.data.data
+
+            // setMessage('Construction de la map catégories via API client...')
+            const productCatMap = await buildCategoryMap()
+            console.log('[MAP] productCatMap final:', productCatMap)
+
+            // setMessage('Upload des images...')
+
+            for (const [sku, imgData] of Object.entries(imageFiles)) {
+                const product = products.find(p => p.sku === sku)
+                if (!product) {
+                    logs.push({ sku, status: 'error', msg: 'Produit introuvable' })
+                    continue
+                }
+
+                const catIds = productCatMap[product.id] || []
+                console.log(`[${sku}] product.id=${product.id} → catIds:`, catIds)
+
+                if (catIds.length === 0) {
+                    logs.push({ sku, status: 'error', msg: 'Aucune catégorie trouvée — upload annulé' })
+                    continue
+                }
+
+                try {
+                    const detailRes = await api_admin.get(`/admin/catalog/products/${product.id}`)
+                    const detail = detailRes.data.data
+
+                    const blob = await imgData.entry.async('blob')
+                    const file = new File([blob], imgData.fileName, {
+                        type: `image/${imgData.ext === 'jpg' ? 'jpeg' : imgData.ext}`
+                    })
+
+                    const formData = new FormData()
+                    formData.append('channel', 'default')
+                    formData.append('locale', 'fr')
+                    formData.append('_method', 'PUT')
+                    formData.append('sku', product.sku)
+                    formData.append('name', detail.name || product.sku)
+                    formData.append('url_key', detail.url_key || product.sku.toLowerCase())
+                    formData.append('price', detail.price || 0)
+                    formData.append('weight', detail.weight || 1)
+                    formData.append('status', 1)
+                    formData.append('visible_individually', 1)
+                    formData.append('short_description', detail.short_description || detail.name)
+                    formData.append('description', detail.description || detail.name)
+                    formData.append('images[files][]', file)
+                    formData.append('channels[]', 1)
+                    catIds.forEach(id => formData.append('categories[]', id))
+
+                    await api_admin.post(`/admin/catalog/products/${product.id}`, formData, {
+                        headers: { 'Content-Type': 'multipart/form-data' }
+                    })
+
+                    logs.push({ sku, status: 'success', msg: `Image OK — catégories: [${catIds.join(', ')}]` })
+                } catch (e) {
+                    console.error(`Erreur upload ${sku}:`, e.response?.data || e.message)
+                    logs.push({ sku, status: 'error', msg: e.response?.data?.message || e.message })
+                }
+            }
+
+            setMessage('Importation des images terminée !')
+        } catch (error) {
+            console.error('Erreur import images:', error)
+            setMessage('Erreur : ' + error.message)
+        }
+
+        setResults(logs)
+        setLoading(false)
+    }
+
+    return (
+        <div className="import-container">
+            <h1 className="import-title">Importation Images Produits (ZIP)</h1>
+
+            {message && (
+                <div className={`import-message ${message.includes('Erreur') ? 'error' : 'success'}`}>
+                    {message}
+                </div>
+            )}
+
+            <div className="import-config">
+                <div className="file-list">
+                    <div className="file-row">
+                        <label>Fichier ZIP :</label>
+                        <input type="file" accept=".zip" onChange={(e) => setZipFile(e.target.files[0])} />
+                    </div>
+                </div>
+            </div>
+
+            <button className="btn-import" onClick={importImages} disabled={loading || !zipFile}>
+                {loading ? 'Traitement...' : 'IMPORTER LES IMAGES'}
+            </button>
+
+            {results.length > 0 && (
+                <div style={{ marginTop: '1rem' }}>
+                    {results.map((r, i) => (
+                        <div key={i} style={{ color: r.status === 'success' ? 'green' : r.status === 'error' ? 'red' : 'gray' }}>
+                            [{r.sku}] {r.msg}
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    )
+}
+
+export default ImageImport

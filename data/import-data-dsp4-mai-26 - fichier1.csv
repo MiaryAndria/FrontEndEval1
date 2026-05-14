@@ -1,0 +1,4 @@
+type,sku,name,Categorie,prix_vente,prix_achat,prix_promo,stock_initial
+simple,sk-l,Laptop Lenovo IdeaPad 5,Ordinateur,600,500,520,10
+,sk-m,MacBook Air M5,Ordinateur,768,555,,5
+,sk-s,Samsung Galaxy S26,Telephone,466,300,350,2

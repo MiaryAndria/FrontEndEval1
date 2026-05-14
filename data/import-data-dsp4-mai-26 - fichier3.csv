@@ -1,0 +1,4 @@
+date,heure,client,achat,status
+05/05/2026,11:30,john@rakoto.com,"{[""sk-l"";3]}",completed
+06/05/2026,07:30,john@rakoto.com,"{[""sk-l"";1],[""sk-m"";2]}",pending
+08/05/2026,09:45,clara@rasoa.com,"{[""sk-s"";1],[""sk-l"";2]}",pending

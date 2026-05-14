@@ -10,12 +10,15 @@ import LoginAdmin from './admin/login/Login'
 import CommandeAdmin from './admin/commandes/List'
 import Wishlist from './client/Wishlist/List'
 import Acceuil from './admin/Acceuil'
+import Import from './admin/Import'
+import ImageImport from './admin/ImageImport'
 
 
 function App() {
   return (
     <Routes>
-
+      <Route path="/image/import"element={<ImageImport/>}/>
+      <Route path="/import"element={<Import/>}/>
       <Route path="/acceuil/admin"element={<Acceuil/>}/>
       <Route path="/" element={<Login />} />
       <Route path="/WishList" element={<Wishlist />} />
@@ -33,3 +36,5 @@ function App() {
 }
 
 export default App
+
+

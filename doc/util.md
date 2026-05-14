@@ -26,3 +26,4 @@ Exemple
             }
 
     
+npm install jszip

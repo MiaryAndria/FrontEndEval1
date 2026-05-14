@@ -16,7 +16,6 @@ function ImportData() {
     const [importedOrders, setImportedOrders] = useState([])
     const [importedCategories, setImportedCategories] = useState([])
     const stockMap = useRef({})
-    const skuCategoryMap = useRef({})
 
     const clean = (val, defaultValue = '') => {
         if (val === null || val === undefined) return defaultValue;
@@ -97,7 +96,7 @@ function ImportData() {
         });
     }
 
-    const InsertProduit = async (row, categoryId) => {
+    const InsertProduit = async (row) => {
         try {
             const sku = getVal(row, 'sku', 'SKU', 'code', 'ref') || `SKU-${Math.floor(Math.random() * 100000)}`;
             const name = getVal(row, 'name', 'nom', 'product_name', 'produit', 'designation') || sku;
@@ -125,8 +124,7 @@ function ImportData() {
                 visible_individually: 1,
                 short_description: description,
                 description: description,
-                inventories: { 1: stock },
-                categories: categoryId ? [categoryId] : []
+                inventories: { 1: stock }
             };
 
             if (prixPromo > 0) {
@@ -135,31 +133,22 @@ function ImportData() {
 
             await api_admin.put(`/admin/catalog/products/${productId}`, updateData);
             stockMap.current[sku] = stock;
-            if (categoryId) skuCategoryMap.current[sku] = categoryId; 
-            console.log(` Produit créé : ${sku} avec stock ${stock}, catégorie: ${categoryId}`);
+            console.log(` Produit créé : ${sku} avec stock ${stock}`);
         } catch (e) {
             console.error(` Erreur création produit ${getVal(row, 'sku')}:`, e.response?.data || e.message);
         }
     }
 
     const InsertCategorie = async (catName) => {
-        if (!catName) return null;
+        if (!catName) return;
         try {
-            const search = await api_admin.get('/admin/catalog/categories');
-            const found = search.data.data.find(c => c.name && c.name.toLowerCase() === catName.toLowerCase());
-            if (found) return found.id;
-
-            const res = await api_admin.post('/admin/catalog/categories', {
-                locale: 'all', name: catName, status: 1,
-                position: 1, display_mode: 'products_and_description',
-                description: catName, slug: catName.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Math.floor(Math.random() * 1000),
+            await api_admin.post('/admin/catalog/categories', {
+                locale: 'all',name: catName,status: 1,
+                position: 1,display_mode: 'products_and_description',
+                description: catName,slug: catName.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Math.floor(Math.random() * 1000),
                 attributes: [1]
             });
-            return res.data?.data?.id;
-        } catch (e) {
-            console.error(`Erreur catégorie ${catName}:`, e.message);
-            return null;
-        }
+        } catch (e) { }
     }
 
     const InsertClient = async (row) => {
@@ -224,14 +213,11 @@ function ImportData() {
                     const currentStock = getProductStock(item.sku);
                     const newQty = Math.max(0, currentStock - item.qty_ordered);
 
-                    const catId = skuCategoryMap.current[item.sku];
-
                     await api_admin.put(`/admin/catalog/products/${item.product_id}`, {
                         channel: 'default', locale: 'fr', sku: p.sku, name: name, url_key: urlKey, price: p.price || 0,
                         weight: p.weight || 1, short_description: p.short_description || name, description: p.description || name,
                         status: 1, visible_individually: 1,
-                        inventories: { 1: newQty },
-                        categories: catId ? [catId] : []
+                        inventories: { 1: newQty }
                     });
                     
                     stockMap.current[item.sku] = newQty;
@@ -273,7 +259,7 @@ function ImportData() {
                 const currentStock = getProductStock(item.sku);
                 
                 if (currentStock < item.qty) {
-                    console.warn(` Stock insuffisant pour ${item.sku} (Disponible: ${currentStock}, Demandé: ${item.qty})`);
+                    console.warn(`⚠️ Stock insuffisant pour ${item.sku} (Disponible: ${currentStock}, Demandé: ${item.qty})`);
                 }
 
                 await api_client.post(`/customer/cart/add/${product.id}`, {
@@ -301,8 +287,10 @@ function ImportData() {
             });
             await api_client.post('/customer/checkout/save-shipping', { shipping_method: 'free_free' });
             await api_client.post('/customer/checkout/save-payment', { payment: { method: 'cashondelivery' } });
+
             const resOrder = await api_client.post('/customer/checkout/save-order');
             console.log(' save-order response:', JSON.stringify(resOrder.data));
+
 
             const orderId = resOrder.data?.data?.id
                 || resOrder.data?.data?.order?.id
@@ -335,8 +323,8 @@ function ImportData() {
 
         for (const email of Object.keys(grouped)) {
             localStorage.removeItem('token_client');
-            
             const clientRows = grouped[email];
+
             const clientInfo = allClients.find(c => {
                 const e = cleanLower(getVal(c, 'email', 'Email', 'mail', 'client'));
                 return e === email;
@@ -360,6 +348,7 @@ function ImportData() {
         }
     }
 
+
     const ImportData = async () => {
         setLoading(true);
         setMessage('Importation en cours...');
@@ -374,16 +363,15 @@ function ImportData() {
                 )];
                 setImportedCategories(uniqueCats.map(name => ({ name })));
 
-                const categoryMap = {};
                 for (const cat of uniqueCats) {
-                    const catId = await InsertCategorie(cat);
-                    if (catId) categoryMap[cat] = catId;
+                    await InsertCategorie(cat);
                 }
+
                 for (const row of rows) {
-                    const catName = getVal(row, 'Categorie', 'categorie', 'category', 'cat');
-                    await InsertProduit(row, categoryMap[catName]);
+                    await InsertProduit(row);
                 }
             }
+
             let clients = [];
             if (file3) {
                 clients = parseCSV(await readFile(file3));
@@ -391,12 +379,14 @@ function ImportData() {
                 for (const row of clients) await InsertClient(row);
             }
             if (file2) await ImportCommande(clients);
+
             setMessage('Importation terminée avec succès !');
         } catch (error) {
             setMessage("Erreur : " + error.message);
         }
         setLoading(false);
     }
+
 
     return (
         <div className="import-container">
