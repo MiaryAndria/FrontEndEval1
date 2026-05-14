@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import api_admin from '../../api/api_admin'
 import api_node from '../../api/api_node'
 import '../css/admin_style.css'
-import DeleteAll from './Delete'
 
 function CommandeAdmin() {
     const [commandes, setCommandes] = useState([])
@@ -82,7 +81,6 @@ function CommandeAdmin() {
 
     return (
         <div className="admin-container">
-            <DeleteAll />
             <div className="admin-header">
                 <h1 className="admin-title">Commandes</h1>
             </div>

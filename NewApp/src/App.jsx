@@ -9,12 +9,14 @@ import ListeCommande from './client/Panier/ListeCommande'
 import LoginAdmin from './admin/login/Login'
 import CommandeAdmin from './admin/commandes/List'
 import Wishlist from './client/Wishlist/List'
+import Acceuil from './admin/Acceuil'
 
 
 function App() {
   return (
     <Routes>
-      
+
+      <Route path="/acceuil/admin"element={<Acceuil/>}/>
       <Route path="/" element={<Login />} />
       <Route path="/WishList" element={<Wishlist />} />
       <Route path="/admin" element={<LoginAdmin />} />

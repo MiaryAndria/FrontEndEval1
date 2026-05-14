@@ -17,7 +17,7 @@ function Login() {
                 device_name: 'newapp'
             })
             localStorage.setItem('token_admin', response.data.token)
-            navigate('/admin/commandes')
+            navigate('/acceuil/admin')
         } catch (err) {
             setError('Identifiants invalides')
         }
