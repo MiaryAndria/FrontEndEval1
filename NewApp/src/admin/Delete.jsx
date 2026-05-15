@@ -34,7 +34,6 @@ function DeleteAll() {
         await api_admin.delete(`/admin/customers/${clientId}`)
     }
 
-
     const ResetData = async () => {
         if (!window.confirm('Réinitialiser toutes les données ?')) return
         setLoading(true)

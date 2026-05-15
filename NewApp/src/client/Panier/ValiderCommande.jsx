@@ -64,12 +64,14 @@ function ValiderCommande() {
             billing: {
                 ...adresse,
                 address: [adresse.adress],
+                address1: [adresse.adress],
                 save_as_address: false,
                 use_for_shipping: true
             },
             shipping: {
                 ...adresse,
                 address: [adresse.adress],
+                address1: [adresse.adress],
                 save_as_address: false
             }
         })
@@ -90,6 +92,13 @@ function ValiderCommande() {
     }
 
     const SaveOrde = async () => {
+        const required = ['first_name', 'last_name', 'email', 'adress', 'city', 'state', 'country', 'postcode', 'phone'];
+        const missing = required.filter(f => !adresse[f]?.trim());
+        if (missing.length > 0) {
+            setMessage('Veuillez remplir tous les champs obligatoires.');
+            return;
+        }
+
         try {
             setLoading(true)
             await SaveAdress()
@@ -220,7 +229,7 @@ function ValiderCommande() {
                                 type="text" 
                                 name="shipping_method" 
                                 value={shipping.shipping_method} 
-                                // onChange={handleChangeShipping}
+                                readOnly
                                 style={{ width: '100%', padding: '10px', marginTop: '5px', marginBottom: '15px' }}
                             />
 
@@ -229,7 +238,7 @@ function ValiderCommande() {
                                 type="text" 
                                 name="method" 
                                 value={payement.method} 
-                                // onChange={handleChangePayement}
+                                readOnly
                                 style={{ width: '100%', padding: '10px', marginTop: '5px', marginBottom: '20px' }}
                             />
 
