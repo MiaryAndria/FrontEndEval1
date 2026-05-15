@@ -22,6 +22,19 @@ function DeleteAll() {
         return response.data.data
     }
 
+    const deleteCategorie = async (categorieId) =>{
+        await api_admin.delete(`/admin/catalog/categories/${categorieId}`)
+    }
+
+    const deleteProduit = async (produitId) =>{
+        await api_admin.delete(`/admin/catalog/products/${produitId}`)
+    }
+
+    const deleteClient = async (clientId) =>{
+        await api_admin.delete(`/admin/customers/${clientId}`)
+    }
+
+
     const ResetData = async () => {
         if (!window.confirm('Réinitialiser toutes les données ?')) return
         setLoading(true)
@@ -43,32 +56,27 @@ function DeleteAll() {
             };
 
             setMessage('Suppression des commandes...')
-            await api_node.delete('/api/reset_shipment_order_invoice').catch(e => console.error("Erreur reset ordres via Node"))
+            await api_node.delete('/api/reset_shipment_order_invoice')
             updateProgress()
 
+
             setMessage('Suppression des clients...')
-            for (const client of clients) {
-                try {
-                    await api_admin.delete(`/admin/customers/${client.id}`)
-                } catch (e) { console.warn(`Client ${client.id} déjà absent.`) }
-                updateProgress()
+            for (let i =0;i<clients.length;i++){
+            await deleteClient(clients[i].id)
+            updateProgress()
             }
 
             setMessage('Suppression des produits...')
-            for (const produit of produits) {
-                try {
-                    await api_admin.delete(`/admin/catalog/products/${produit.id}`)
-                } catch (e) { console.warn(`Produit ${produit.id} déjà absent.`) }
-                updateProgress()
+            for(let i=0;i<produits.length;i++){
+            await deleteProduit(produits[i].id)
+            updateProgress()
             }
 
             setMessage('Suppression des catégories...')
-            for (const cat of categories) {
-                if (cat.id === 1) continue;
-                try {
-                    await api_admin.delete(`/admin/catalog/categories/${cat.id}`)
-                } catch (e) { console.warn(`Catégorie ${cat.id} déjà absente.`) }
-                updateProgress()
+            for(let i=0;i<categories.length;i++){
+            if (categories[i].id ===1) continue 
+            await deleteCategorie(categories[i].id)
+            updateProgress()
             }
 
             setMessage('Données réinitialisées avec succès !')
