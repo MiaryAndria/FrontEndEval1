@@ -1,17 +1,9 @@
-import { useState } from 'react'
 import JSZip from 'jszip'
 import api_admin from '../api/api_admin'
 import api_client from '../api/api_client'
-import './css/admin_style.css'
 
-function ImageImport() {
-    const [loading, setLoading] = useState(false)
-    const [message, setMessage] = useState('')
-    const [zipFile, setZipFile] = useState(null)
-    const [results, setResults] = useState([])
-    const [progress, setProgress] = useState(0)
-
-    const buildCategoryMap = async () => {
+class ImageImportService {
+    async buildCategoryMap() {
         const productCatMap = {}
         try {
             const catsRes = await api_admin.get('/admin/catalog/categories')
@@ -38,14 +30,13 @@ function ImageImport() {
         return productCatMap
     }
 
-    const importImages = async () => {
+    async importImages(zipFile, callbacks) {
+        const { onProgress, onMessage, onLog } = callbacks || {}
+        
         if (!zipFile) return
-        setLoading(true)
-        setProgress(0)
-        setMessage('Extraction du ZIP...')
-        setResults([])
-        const logs = []
-
+        
+        if (onMessage) onMessage('Extraction du ZIP...')
+        
         try {
             const zip = await JSZip.loadAsync(zipFile)
             const imageFiles = {}
@@ -61,18 +52,17 @@ function ImageImport() {
             }
 
             const totalFiles = Object.keys(imageFiles).length
-            logs.push({ sku: '---', status: 'info', msg: `${totalFiles} images trouvées dans le ZIP` })
+            if (onLog) onLog({ sku: '---', status: 'info', msg: `${totalFiles} images trouvées dans le ZIP` })
             
             if (totalFiles === 0) {
-                setMessage('Aucune image trouvée dans le ZIP')
-                setLoading(false)
+                if (onMessage) onMessage('Aucune image trouvée dans le ZIP')
                 return
             }
 
             const productsRes = await api_admin.get('/admin/catalog/products')
             const products = productsRes.data.data
 
-            const productCatMap = await buildCategoryMap()
+            const productCatMap = await this.buildCategoryMap()
             console.log('[MAP] productCatMap final:', productCatMap)
 
             let processedCount = 0
@@ -80,9 +70,9 @@ function ImageImport() {
             for (const [sku, imgData] of Object.entries(imageFiles)) {
                 const product = products.find(p => p.sku === sku)
                 if (!product) {
-                    logs.push({ sku, status: 'error', msg: 'Produit introuvable' })
+                    if (onLog) onLog({ sku, status: 'error', msg: 'Produit introuvable' })
                     processedCount++
-                    setProgress(Math.round((processedCount / totalFiles) * 100))
+                    if (onProgress) onProgress(Math.round((processedCount / totalFiles) * 100))
                     continue
                 }
 
@@ -90,9 +80,9 @@ function ImageImport() {
                 console.log(`[${sku}] product.id=${product.id} → catIds:`, catIds)
 
                 if (catIds.length === 0) {
-                    logs.push({ sku, status: 'error', msg: 'Aucune catégorie trouvée — upload annulé' })
+                    if (onLog) onLog({ sku, status: 'error', msg: 'Aucune catégorie trouvée — upload annulé' })
                     processedCount++
-                    setProgress(Math.round((processedCount / totalFiles) * 100))
+                    if (onProgress) onProgress(Math.round((processedCount / totalFiles) * 100))
                     continue
                 }
 
@@ -116,88 +106,39 @@ function ImageImport() {
                     formData.append('weight', detail.weight || 1)
                     formData.append('status', 1)
                     formData.append('visible_individually', 1)
+                    formData.append('manage_stock', 1)
                     formData.append('short_description', detail.short_description || detail.name)
                     formData.append('description', detail.description || detail.name)
                     formData.append('images[files][]', file)
                     formData.append('channels[]', 1)
                     catIds.forEach(id => formData.append('categories[]', id))
+                    
+                    if (detail.inventories && detail.inventories.length > 0) {
+                        detail.inventories.forEach(inv => {
+                            formData.append(`inventories[${inv.inventory_source_id}]`, inv.qty || 0)
+                        })
+                    }
 
                     await api_admin.post(`/admin/catalog/products/${product.id}`, formData, {
                         headers: { 'Content-Type': 'multipart/form-data' }
                     })
 
-                    logs.push({ sku, status: 'success', msg: `Image OK — catégories: [${catIds.join(', ')}]` })
+                    if (onLog) onLog({ sku, status: 'success', msg: `Image OK — catégories: [${catIds.join(', ')}]` })
                 } catch (e) {
                     console.error(`Erreur upload ${sku}:`, e.response?.data || e.message)
-                    logs.push({ sku, status: 'error', msg: e.response?.data?.message || e.message })
+                    if (onLog) onLog({ sku, status: 'error', msg: e.response?.data?.message || e.message })
                 }
                 
                 processedCount++
-                setProgress(Math.round((processedCount / totalFiles) * 100))
+                if (onProgress) onProgress(Math.round((processedCount / totalFiles) * 100))
             }
 
-            setMessage('Importation des images terminée !')
+            if (onMessage) onMessage('Importation des images terminée !')
         } catch (error) {
             console.error('Erreur import images:', error)
-            setMessage('Erreur : ' + error.message)
+            if (onMessage) onMessage('Erreur : ' + error.message)
         }
-
-        setResults(logs)
-        setLoading(false)
-        setProgress(0)
     }
-
-    return (
-        <div style={{ maxWidth: '600px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-            <div style={{ textAlign: 'center' }}>
-                <h1>Import Images</h1>
-                <p>Mettez en ligne un fichier ZIP contenant les images de vos produits</p>
-            </div>
-
-            <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                {message && (
-                    <div className={`alert ${message.includes('Erreur') ? 'alert-error' : ''}`}>
-                        {message}
-                    </div>
-                )}
-
-                <div className="form-group">
-                    <label>Fichier ZIP (.zip)</label>
-                    <input 
-                        type="file" 
-                        accept=".zip" 
-                        onChange={(e) => setZipFile(e.target.files[0])}
-                        className="input-field"
-                    />
-                </div>
-
-                {loading && progress > 0 && (
-                    <div style={{ width: '100%', backgroundColor: 'var(--border-color)', borderRadius: '999px', height: '8px', overflow: 'hidden' }}>
-                        <div style={{ width: `${progress}%`, backgroundColor: 'var(--primary-color)', height: '100%', transition: 'width 0.3s ease' }}></div>
-                    </div>
-                )}
-
-                <button 
-                    className="btn btn-primary" 
-                    onClick={importImages} 
-                    disabled={loading || !zipFile}
-                    style={{ width: '100%' }}
-                >
-                    {loading ? `Traitement en cours... ${progress}%` : 'LANCER L\'IMPORT'}
-                </button>
-            </div>
-
-            {results.length > 0 && (
-                <div className="card">
-                    {results.map((r, i) => (
-                        <div key={i} style={{ color: r.status === 'success' ? '#059669' : r.status === 'error' ? '#dc2626' : '#6b7280', padding: '0.25rem 0' }}>
-                            [{r.sku}] {r.msg}
-                        </div>
-                    ))}
-                </div>
-            )}
-        </div>
-    )
 }
 
-export default ImageImport
+export default new ImageImportService()

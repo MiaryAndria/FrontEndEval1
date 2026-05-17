@@ -2,26 +2,20 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import api_client from '../../api/api_client'
 import '../css/client_style.css'
+import Stock from '../../services/SimulationCommande'
 
 function DetailProduit() {
     const [product, setProduct] = useState(null)
     const [loading, setLoading] = useState(true)
     const [quantity, setQuantity] = useState(1)
-    const [message, setMessage] = useState('')
-    const [panier, setPanier] = useState({
-        product_id: '',
-        is_buy_now:'',
-        quantity: ''
-
-    })
+    const [realStock, setRealStock] = useState(null)
     const { id } = useParams()
     const navigate = useNavigate()
 
     const fetchDetailProduit = async () => {
         try {
             const response = await api_client.get(`/products/${id}`)
-            const data = response.data.data
-            setProduct(data)
+            setProduct(response.data.data)
             setLoading(false)
         } catch (error) {
             setMessage('Erreur lors du chargement des détails')
@@ -29,6 +23,15 @@ function DetailProduit() {
         }
     }
 
+    const fetchStock = async () => {
+        try {
+            const stock = await Stock.getSingleProductStock(id)
+            setRealStock(stock)
+        } catch (error) {
+            console.error('Erreur récupération stock', error)
+        }
+    }
+    
     const ajouterPanier = async () => {
         try {
             await api_client.post(`/customer/cart/add/${id}`, {
@@ -51,9 +54,8 @@ function DetailProduit() {
     }
 
     useEffect(() => {
-        if (id) {
-            fetchDetailProduit()
-        }
+        fetchDetailProduit()
+        fetchStock()
     }, [id])
 
     if (loading) return <div className="client-container">Chargement...</div>
@@ -91,24 +93,39 @@ function DetailProduit() {
                         <div dangerouslySetInnerHTML={{ __html: product.short_description }} />
                     </div>
 
-                    {(product.qty === 0 || !product.in_stock) && (
+                    {realStock === null ? (
+                        <p className="stock-badge" style={{ backgroundColor: 'var(--border-color)', color: 'var(--text-color)' }}>
+                            Vérification du stock...
+                        </p>
+                    ) : realStock === 0 ? (
                         <p className="stock-badge">Rupture de stock</p>
-                    )}
+                    ) : null}
                     
                     {/* Sélecteur de Quantité */}
                     <div className="qty-section">
                         <span className="qty-label">Quantité</span>
                         <div className="quantity-selector">
-                            <button onClick={() => setQuantity(Math.max(1, quantity - 1))}>-</button>
+                            <button 
+                                onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                                disabled={quantity <= 1}
+                            >-</button>
                             <span>{quantity}</span>
-                            <button onClick={() => setQuantity(quantity + 1)}>+</button>
+                            <button 
+                                onClick={() => setQuantity(Math.min(realStock || 0, quantity + 1))}
+                                disabled={realStock === null || quantity >= realStock}
+                            >+</button>
                         </div>
+                    </div>
+
+                    <div>
+                        <h1>Quantité en stock</h1>
+                        <p>{realStock === null ? 'Calcul...' : realStock}</p>
                     </div>
 
                     <button
                         onClick={ajouterPanier}
-                        className={`btn btn-full ${product.in_stock ? 'btn-primary' : 'btn-outline'}`}
-                        disabled={!product.in_stock}
+                        className={`btn btn-full ${realStock > 0 ? 'btn-primary' : 'btn-outline'}`}
+                        disabled={realStock === null || realStock === 0}
                     >Ajouter panier
                     </button>
                 </div>

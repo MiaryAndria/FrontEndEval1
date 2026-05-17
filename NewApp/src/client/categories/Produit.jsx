@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import api_client from '../../api/api_client'
+import Stock from '../../services/SimulationCommande'
 import '../css/client_style.css'
 
 function ProduitCategorie() {
@@ -11,15 +12,34 @@ function ProduitCategorie() {
     const navigate = useNavigate()
     const { id } = useParams()
 
+    const [stocks, setStocks] = useState({})
+
     const fetchProduits = async () => {
         try {
             const response = await api_client.get(`/products?category_id=${id}&sort=id&limit=100`)
-            setProduits(response.data.data)
+            const prods = response.data.data
+            setProduits(prods)
             setLoading(false)
+            
+            fetchStocksSimules(prods)
         } catch (error) {
             setMessage('Erreur lors du chargement')
             setLoading(false)
         }
+    }
+
+    const fetchStocksSimules = async (prods) => {
+        const newStocks = {}
+        for (const p of prods) {
+            if (p.type !== "configurable") {
+                try {
+                    newStocks[p.id] = await Stock.getSingleProductStock(p.id)
+                } catch (e) {
+                    console.error("Erreur stock simulation", e)
+                }
+            }
+        }
+        setStocks(newStocks)
     }
 
     const ajouterPanier = async (produitId) => {
@@ -44,10 +64,23 @@ function ProduitCategorie() {
     }
 
     const handleQuantityChange = (produitId, delta) => {
-        setQuantities(prev => ({
-            ...prev,
-            [produitId]: Math.max(1, (prev[produitId] || 1) + delta)
-        }))
+        const maxStock = stocks[produitId] !== undefined ? stocks[produitId] : 9999;
+        
+        setQuantities(prev => {
+            const currentQty = prev[produitId] || 1;
+            let newQty = currentQty + delta;
+            
+            if (delta > 0 && newQty > maxStock) {
+                setMessage(`Désolé, seulement ${maxStock} exemplaires disponibles.`);
+                setTimeout(() => setMessage(''), 3000);
+                return prev;
+            }
+            
+            return {
+                ...prev,
+                [produitId]: Math.max(1, newQty)
+            };
+        });
     }
     
     const addToWishlist = async (produitId) => {
@@ -109,29 +142,33 @@ function ProduitCategorie() {
                                 <p className="card-price">{produit.formatted_price}</p>
                             </div>
 
-                            {(produit.qty === 0 || !produit.in_stock) && (
+                            {stocks[produit.id] === undefined ? (
+                                <p className="stock-badge" style={{ backgroundColor: 'var(--border-color)', color: 'var(--text-color)' }}>
+                                    Vérification du stock...
+                                </p>
+                            ) : stocks[produit.id] === 0 ? (
                                 <p className="stock-badge">Rupture de stock</p>
-                            )}
+                            ) : null}
 
                             <div className="mt-20" style={{ marginTop: 'auto' }}>
                                 {/* Sélecteur de Quantité */}
                                 <div className="quantity-selector">
-                                    <button onClick={() => handleQuantityChange(produit.id, -1)}>-</button>
+                                    <button onClick={() => handleQuantityChange(produit.id, -1)} disabled={currentQty <= 1}>-</button>
                                     <span>{currentQty}</span>
-                                    <button onClick={() => handleQuantityChange(produit.id, 1)}>+</button>
+                                    <button onClick={() => handleQuantityChange(produit.id, 1)} disabled={stocks[produit.id] === undefined || currentQty >= stocks[produit.id]}>+</button>
                                 </div>
 
                                 {/* Boutons Actions */}
                             <button
                                 onClick={() => ajouterPanier(produit.id)}
-                                className={`btn btn-full ${produit.in_stock ? 'btn-primary' : 'btn-outline'}`}
-                                disabled={!produit.in_stock}
+                                className={`btn btn-full ${stocks[produit.id] > 0 ? 'btn-primary' : 'btn-outline'}`}
+                                disabled={stocks[produit.id] === undefined || stocks[produit.id] === 0}
                             >   Ajouter panier
                             </button>
                             <button
                                 onClick={() => addToWishlist(produit.id)}
-                                className={`btn btn-full ${produit.in_stock ? 'btn-primary' : 'btn-outline'}`}
-                                disabled={!produit.in_stock}
+                                className={`btn btn-full ${stocks[produit.id] > 0 ? 'btn-primary' : 'btn-outline'}`}
+                                disabled={stocks[produit.id] === undefined || stocks[produit.id] === 0}
                             >   Ajouter Wishlist
                             </button>
                                 <button 

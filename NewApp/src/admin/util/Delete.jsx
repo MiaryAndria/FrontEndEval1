@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import api_admin from '../api/api_admin'
-import api_node from '../api/api_node'
+import api_admin from '../../api/api_admin'
+import api_node from '../../api/api_node'
 
 function DeleteAll() {
     const [loading, setLoading] = useState(false)

@@ -11,8 +11,11 @@ import LoginAdmin from './admin/login/Login'
 import CommandeAdmin from './admin/commandes/List'
 import Wishlist from './client/Wishlist/List'
 import Acceuil from './admin/Acceuil'
-import Import from './admin/Import'
-import ImageImport from './admin/ImageImport'
+import ImportData from './admin/util/Import'
+import ImageImport from './admin/util/ImageImport'
+import ListProduit from './admin/stock/ListeProduit'
+import AjouterStock from './admin/stock/Insert'
+import InfoProduit from './admin/stock/InfoProduit'
 
 function App() {
   return (
@@ -20,8 +23,11 @@ function App() {
       <Navbar />
       <main className="main-content">
         <Routes>
+          <Route path="/admin/stock/info/:id" element={<InfoProduit/>}/>
           <Route path="/image/import" element={<ImageImport/>}/>
-          <Route path="/import" element={<Import/>}/>
+          <Route path="/admin/stock/list" element={<ListProduit/>}/>
+          <Route path="/admin/stock/add/:id" element={<AjouterStock/>}/>
+          <Route path="/import" element={<ImportData/>}/>
           <Route path="/acceuil/admin" element={<Acceuil/>}/>
           <Route path="/" element={<Login />} />
           <Route path="/WishList" element={<Wishlist />} />

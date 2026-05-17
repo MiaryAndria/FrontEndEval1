@@ -1,11 +1,22 @@
 import { useState, useEffect } from 'react'
 import api_admin from '../../api/api_admin'
+import axios from 'axios'
+import Stock from '../../services/SimulationCommande'
 import '../css/admin_style.css'
 
 function CommandeAdmin() {
     const [commandes, setCommandes] = useState([])
     const [loading, setLoading] = useState(true)
     const [message, setMessage] = useState('')
+
+    const updateIndex = async(productId) =>{
+        try{
+            await axios.put(`http://localhost:3001/api/update/product-index/${productId}`, {});
+
+        }catch(err){
+
+        }
+    }
 
     const fetchCommandes = async () => {
         try {
@@ -39,6 +50,16 @@ function CommandeAdmin() {
                     items: items
                 }
             })
+            
+            try {
+                for (const item of order.items) {
+                    await updateIndex(item.product_id)
+                    Stock.invalidateCache(item.product_id);
+                }
+            } catch (idxErr) {
+                console.error("Erreur réindexation", idxErr);
+            }
+
             setMessage("Commande expédiée")
             fetchCommandes()
         } catch (error) {
@@ -60,6 +81,15 @@ function CommandeAdmin() {
                 },
                 can_create_transaction: 1
             })
+
+            try {
+                for (const item of order.items) {
+                    await updateIndex(item.product_id)
+                    Stock.invalidateCache(item.product_id);
+                }
+            } catch (idxErr) {
+                console.error("Erreur réindexation", idxErr);
+            }
 
             setMessage('Commande facturée')
             fetchCommandes()
@@ -142,7 +172,7 @@ function CommandeAdmin() {
                                 className="btn btn-primary" 
                                 style={{ flex: 1, padding: '0.5rem' }} 
                                 onClick={() => InvoiceOrder(order)} 
-                                disabled={order.status === 'completed' || order.status === 'closed'}
+                                disabled={order.status === 'completed' || order.status === 'closed' || order.status === 'processing' || order.status === 'invoices'}
                             >
                                 Facturer
                             </button>

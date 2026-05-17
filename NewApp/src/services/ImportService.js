@@ -18,8 +18,6 @@ class ImportService {
         this.channelId = null;
     }
 
-    // ─── Utilitaires ────────────────────────────────────────────────────────────
-
     clean(val, defaultValue = '') {
         if (val === null || val === undefined) return defaultValue;
         let s = val.toString().trim();
@@ -51,7 +49,6 @@ class ImportService {
         return '';
     }
 
-    // ─── Parsing CSV ─────────────────────────────────────────────────────────────
 
     parseCSV(content, separator = 'auto') {
         const lines = content.split(/\r?\n/).map(l => l.trim()).filter(line => line !== '');
@@ -99,6 +96,13 @@ class ImportService {
         };
 
         let headersRaw = lines[0].replace(/^\uFEFF/, '').split(usedSeparator).map(h => this.clean(h).replace(/[;,\s]+$/, ''));
+        
+        headersRaw.forEach(h => {
+            if (/[^a-zA-Z0-9_\s\-éèàâêîôûäëïöüç]/i.test(h)) {
+                throw new Error("Nom de colonne non conforme");
+            }
+        });
+
         const isHeader = headersRaw.some(h => /sku|nom|name|prix|price|stock|qty|client|email|achat|type/i.test(h));
         
         let dataLines = lines;
@@ -132,6 +136,20 @@ class ImportService {
                 row[header] = values[index] !== undefined ? values[index] : '';
             });
             row._rawValues = values; 
+
+            const dateVal = this.getVal(row, 'date', 'date_commande', 'order_date');
+            if (dateVal && !/^\d{2}\/\d{2}\/\d{4}$/.test(dateVal)) {
+                throw new Error("format de date différente de DD/MM/YYYY");
+            }
+
+            const montantVal = this.getVal(row, 'prix_vente', 'prix', 'price', 'price_sale', 'vente', 'montant', 'total');
+            if (montantVal) {
+                const num = parseFloat(montantVal.replace(/['"\s]/g, '').replace(',', '.'));
+                if (num < 0) {
+                    throw new Error("montant negatif");
+                }
+            }
+
             return row;
         });
     }
@@ -142,7 +160,6 @@ class ImportService {
         try {
             const res = await api_admin.get('/admin/settings/inventory-sources');
             const sources = res.data.data || [];
-            // On cherche la source par défaut ou la première active
             const source = sources.find(s => s.code === 'default') || sources[0];
             this.inventorySourceId = source ? source.id : 1;
             console.log(`[IMPORT] Source d'inventaire détectée: ${this.inventorySourceId} (${source?.name})`);
@@ -170,7 +187,6 @@ class ImportService {
 
     async insertCategorie(catInput) {
         let catName = 'Général'; 
-
         if (typeof catInput === 'string' && catInput.trim() !== '') {
             catName = catInput.trim();
         } else if (typeof catInput === 'object' && catInput !== null) {
@@ -282,16 +298,16 @@ class ImportService {
             try {
                 await api_admin.put(`/admin/catalog/products/${productId}`, updateData);
                 console.log(`[STOCK] Produit + inventaire mis à jour: ${sku} => ${stock} (Source: ${sourceId}, Channel: ${chanId})`);
-                
-                // Fallback direct pour contourner le bug d'indexation de Bagisto
+
                 try {
-                    await axios.put(`http://localhost:3001/api/update/product-stock/${productId}`, {
-                        qty: stock,
-                        channel_id: chanId
+                    await api_admin.post(`/admin/catalog/products/${productId}/inventories`, {
+                        inventories: { [sourceId]: stock }
                     });
-                    console.log(`[STOCK INDEX] Index Bagisto forcé pour ${sku} avec ${stock} pièces.`);
+                    console.log(`[STOCK] Inventaire Bagisto forcé pour ${sku} avec ${stock} pièces.`);
+
+                    await axios.put(`http://localhost:3001/api/update/product-index/${productId}`, {});
                 } catch (idxErr) {
-                    // On reste silencieux si le serveur Node n'est pas lancé
+                    console.error("Erreur mise à jour inventaire:", idxErr);
                 }
             } catch (e) {
                 console.error(`[STOCK] Erreur update produit ${sku}:`, e.response?.data || e.message);
@@ -379,18 +395,16 @@ class ImportService {
                 await api_admin.post(`/admin/sales/invoices/${order.id}`, {
                     invoice: { items: invoiceItems }, can_create_transaction: 1,
                 });
-                // console.log(`  ✓ Facture créée pour commande ${orderId}`);
             } catch (invErr) {
-                // console.error(`  ✗ Erreur Facture ${orderId}:`, invErr.response?.data || invErr.message);
+            
             }
 
             try {
                 await api_admin.post(`/admin/sales/shipments/${order.id}`, {
                     shipment: { carrier_title: 'Livraison Standard', track_number: 'IMP-' + order.id, source: 1, total_qty: totalQty, items: shipItems },
                 });
-                // console.log(`  ✓ Expédition créée pour commande ${orderId}`);
             } catch (shipErr) {
-                // console.error(`  ✗ Erreur Expédition ${orderId}:`, shipErr.response?.data || shipErr.message);
+                
             }
 
             console.log(`Commande ${orderId} passée en COMPLETED`);
@@ -412,9 +426,7 @@ class ImportService {
                 await api_admin.post(`/admin/sales/invoices/${order.id}`, {
                     invoice: { items: invoiceItems }, can_create_transaction: 1,
                 });
-                // console.log(`  ✓ Facture créée pour commande ${orderId}`);
             } catch (invErr) {
-                // console.error(`  ✗ Erreur Facture ${orderId}:`, invErr.response?.data || invErr.message);
             }
 
             console.log(`Commande ${orderId} passée en PROCESSING`);
@@ -535,6 +547,19 @@ class ImportService {
 
             if (csvStatus === 'completed') await this.completeOrder(orderId);
             else if (csvStatus === 'processing') await this.processingOrder(orderId);
+
+            for (const item of items) {
+                const pId = this.skuToIdMap[item.sku];
+                if (pId) {
+                    try {
+                        await axios.put(`http://localhost:3001/api/update/product-index/${pId}`, {});
+                        console.log(`[REINDEX] Index recalculé pour SKU ${item.sku} (ID ${pId}) après achat`);
+                    } catch (idxErr) {
+                        console.error(`[REINDEX ERREUR] SKU ${item.sku}:`, idxErr.message);
+                    }
+                }
+            }
+
         } catch (e) { 
             console.error(`Erreur ProcessOrderLine (Email: ${row?.client || 'Inconnu'}):`, e.response?.data || e.message); 
         }
@@ -579,7 +604,6 @@ class ImportService {
                 }
             } catch (err) {
                 console.error(`Echec login ${email}`);
-                // On incrémente quand même pour toutes les lignes de ce client pour garder le total cohérent
                 for (let i = 0; i < clientRows.length; i++) {
                     if (progressTracker) progressTracker.increment();
                 }

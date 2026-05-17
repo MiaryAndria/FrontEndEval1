@@ -1,5 +1,5 @@
 import './css/admin_style.css'
-import DeleteAll from './Delete'
+import DeleteAll from './util/Delete'
 import { Link } from 'react-router-dom'
 import { Upload, ListOrdered, Image as ImageIcon } from 'lucide-react'
 import { useState, useEffect } from 'react'
@@ -50,10 +50,16 @@ function Acceuil() {
                     <p style={{ textAlign: 'center', fontSize: '0.875rem' }}>Consultez, expédiez et facturez vos commandes clients.</p>
                 </Link>
 
+                 <Link to="/admin/stock/list" className="card" style={{ textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', transition: 'transform 0.2s', cursor: 'pointer', position: 'relative' }}>
+                    <ListOrdered size={40} color="var(--primary-color)" />
+                    <h3 style={{ margin: 0, color: 'var(--text-color)' }}>Gestion stock</h3>
+                    <p style={{ textAlign: 'center', fontSize: '0.875rem' }}>Suiver les statistiques de stock de vos produits.</p>
+                </Link>
+
             </div>
 
             <div style={{ marginTop: '3rem', display: 'flex', justifyContent: 'center' }}>
-                <DeleteAll />
+            <DeleteAll />
             </div>
         </div>
     )

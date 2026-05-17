@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import ImportService from '../services/ImportService';
+import ImportService from '../../services/ImportService';
 import ContentImport from './ContentImport';
-import './css/admin_style.css';
+import '../css/admin_style.css'
 
 const ImportData = () => {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
     const [separator, setSeparator] = useState('auto');
     const [progress, setProgress] = useState(0);
+    const [currentStep, setCurrentStep] = useState('');
 
     const [file1, setFile1] = useState(null);
     const [file2, setFile2] = useState(null);
@@ -28,7 +29,8 @@ const ImportData = () => {
 
     const startImport = async () => {
         setLoading(true);
-        setMessage('Lecture des fichiers...');
+        setCurrentStep('Lecture des fichiers...');
+        setMessage('');
         ImportService.reset();
         
         try {
@@ -57,7 +59,7 @@ const ImportData = () => {
             };
 
             if (file1 && rows1.length > 0) {
-                setMessage('Importation des produits...');
+                setCurrentStep('Importation des produits...');
                 setImportedProducts(rows1);
                 
                 const uniqueCats = [...new Set(rows1.map(r => ImportService.getVal(r, 'Categorie', 'categorie', 'category', 'cat')).filter(c => c))];
@@ -71,7 +73,7 @@ const ImportData = () => {
             }
 
             if (file3 && rows3.length > 0) {
-                setMessage('Importation des clients...');
+                setCurrentStep('Importation des clients...');
                 setImportedClients(rows3);
                 for (const row of rows3) {
                     await ImportService.insertClient(row);
@@ -80,15 +82,22 @@ const ImportData = () => {
             }
 
             if (file2 && rows2.length > 0) {
-                setMessage('Importation des commandes...');
+                setCurrentStep('Importation des commandes...');
                 setImportedOrders(rows2);
                 await ImportService.importCommandes(rows2, rows3, progressTracker);
             }
 
+            setCurrentStep('');
             setMessage('Importation terminée avec succès !');
         } catch (error) {
             console.error(error);
-            setMessage('Erreur : ' + error.message);
+            setCurrentStep('');
+            let errorMsg = error.message;
+            if (errorMsg.includes('colonne')) errorMsg = "Le fichier contient des noms de colonnes invalides ou des caractères spéciaux non autorisés.";
+            else if (errorMsg.includes('date')) errorMsg = "Le format de la date doit être JJ/MM/AAAA.";
+            else if (errorMsg.includes('negatif')) errorMsg = "Les montants négatifs sont interdits.";
+            
+            setMessage('Erreur d\'importation : ' + errorMsg);
         }
 
         setLoading(false);
@@ -143,9 +152,16 @@ const ImportData = () => {
                     <input type="file" accept=".csv" onChange={(e) => setFile2(e.target.files[0])} className="input-field" />
                 </div>
 
-                {loading && progress > 0 && (
-                    <div style={{ backgroundColor: 'var(--border-color)', height: '10px', borderRadius: '5px', overflow: 'hidden' }}>
-                        <div style={{ width: `${progress}%`, backgroundColor: 'var(--primary-color)', height: '100%', transition: 'width 0.3s ease' }} />
+                {loading && currentStep && (
+                    <div style={{ marginBottom: '1rem' }}>
+                        <p style={{ margin: '0 0 0.5rem 0', fontWeight: 'bold', color: 'var(--primary-color)' }}>
+                            Étape en cours : {currentStep} {progress > 0 && `(${progress}%)`}
+                        </p>
+                        {progress > 0 && (
+                            <div style={{ backgroundColor: 'var(--border-color)', height: '10px', borderRadius: '5px', overflow: 'hidden' }}>
+                                <div style={{ width: `${progress}%`, backgroundColor: 'var(--primary-color)', height: '100%', transition: 'width 0.3s ease' }} />
+                            </div>
+                        )}
                     </div>
                 )}
 
