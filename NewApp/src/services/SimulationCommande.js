@@ -85,7 +85,7 @@ class Stock {
                     await simAxios.delete(`/customer/cart/remove/${items[i].id}`, {
                         headers: { Authorization: token }
                     })
-                } catch (e) {}
+                } catch (e) { }
             }
         } catch (e) {
             console.error('[STOCK] Erreur nettoyage panier:', e.response?.data || e.message)
@@ -172,6 +172,25 @@ class Stock {
             this.simulationLock = null
         }
     }
+
+    // async getSingleProductStock(productId) {
+
+    //     if (this.stockCache[productId] !== undefined) {
+    //         console.log(`[STOCK NODE] Cache hit produit ${productId} => ${this.stockCache[productId]}`)
+    //         return this.stockCache[productId]
+    //     }
+
+    //     try {
+    //         const res = await axios.get(`http://localhost:3001/api/inventory/${productId}`)
+    //         const stock = res.data.qty || 0
+    //         this.stockCache[productId] = stock
+    //         console.log(`[STOCK NODE] Produit ${productId} => ${stock}`)
+    //         return stock
+    //     } catch (e) {
+    //         console.error(`[STOCK NODE] Erreur fetch stock pour produit ${productId}`, e)
+    //         return 0
+    //     }
+    // }
 
     invalidateCache(productId) {
         if (productId) {
