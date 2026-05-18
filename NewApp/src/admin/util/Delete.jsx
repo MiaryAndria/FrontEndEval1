@@ -22,31 +22,125 @@ function DeleteAll() {
         return response.data.data
     }
 
-    const deleteCategorie = async (categorieId) =>{
-        await api_admin.delete(`/admin/catalog/categories/${categorieId}`)
+    // const deleteCategorie = async (categorieId) =>{
+    //     await api_admin.delete(`/admin/catalog/categories/${categorieId}`)
+    // }
+
+    const deleteAllCategories = async () => {
+        try {
+            const categories = await getAllCategorie()
+            const indices = categories.map(cat => cat.id)
+
+            if (indices.length === 0) return
+
+            await api_admin.post('/admin/catalog/categories/mass-destroy', { indices })
+            console.log(`${indices.length} catégories supprimées`)
+        } catch (e) {
+            console.error('Erreur suppression catégories:', e.response?.data || e.message)
+        }
     }
 
-    const deleteProduit = async (produitId) =>{
-        await api_admin.delete(`/admin/catalog/products/${produitId}`)
+    // const deleteProduit = async (produitId) =>{
+    //     await api_admin.delete(`/admin/catalog/products/${produitId}`)
+    // }
+
+    const deleteAllProduct = async () => {
+        try {
+
+            const produits = await getAllProduit()
+            const indices = produits.map(prod => prod.id)
+
+            if (indices.length === 0) return
+
+            await api_admin.post('/admin/catalog/products/mass-destroy', { indices })
+            console.log(`${indices.length} produits supprimées`)
+        } catch (e) {
+            console.error('Erreur suppression produits:', e.response?.data || e.message)
+        }
     }
 
-    const deleteClient = async (clientId) =>{
-        await api_admin.delete(`/admin/customers/${clientId}`)
+    // const deleteClient = async (clientId) =>{
+    //     await api_admin.delete(`/admin/customers/${clientId}`)
+    // }
+
+    const deleteAllClients = async () => {
+        try {
+
+            const clients = await getAllClients()
+            const indices = clients.map(client => client.id)
+
+            if (indices.length === 0) return
+
+            await api_admin.post('/admin/customers/mass-destroy', { indices })
+            console.log(`${indices.length} clients supprimées`)
+        } catch (e) {
+            console.error('Erreur suppression clients:', e.response?.data || e.message)
+        }
     }
 
+
+    // const ResetData = async () => {
+    //     if (!window.confirm('Réinitialiser toutes les données ?')) return
+    //     setLoading(true)
+    //     setProgress(0)
+    //     setMessage('Calcul des données à supprimer...')
+        
+    //     try {
+
+    //         const clients = await getAllClients()
+    //         const produits = await getAllProduit()
+    //         const categories = await getAllCategorie()
+            
+    //         const totalItems = clients.length + produits.length + (categories.length - 1) + 1; 
+    //         let processedItems = 0;
+
+    //         const updateProgress = () => {
+    //             processedItems++;
+    //             setProgress(Math.round((processedItems / totalItems) * 100));
+    //         };
+
+    //         setMessage('Suppression des commandes...')
+    //         await api_node.delete('/api/reset_shipment_order_invoice')
+    //         updateProgress()
+
+
+    //         setMessage('Suppression des clients...')
+    //         for (let i =0;i<clients.length;i++){
+    //         await deleteClient(clients[i].id)
+    //         updateProgress()
+    //         }
+
+    //         setMessage('Suppression des produits...')
+    //         for(let i=0;i<produits.length;i++){
+    //         await deleteProduit(produits[i].id)
+    //         updateProgress()
+    //         }
+
+    //         setMessage('Suppression des catégories...')
+    //         for(let i=0;i<categories.length;i++){
+    //         if (categories[i].id ===1) continue 
+    //         await deleteCategorie(categories[i].id)
+    //         updateProgress()
+    //         }
+
+    //         setMessage('Données réinitialisées avec succès !')
+    //     } catch (error) {
+    //         console.log(error)
+    //         setMessage('Erreur lors de la réinitialisation (voir console)')
+    //     }
+    //     setLoading(false)
+    //     setProgress(0)
+    // }
+
+
+    
     const ResetData = async () => {
         if (!window.confirm('Réinitialiser toutes les données ?')) return
         setLoading(true)
         setProgress(0)
         setMessage('Calcul des données à supprimer...')
-        
         try {
-
-            const clients = await getAllClients()
-            const produits = await getAllProduit()
-            const categories = await getAllCategorie()
-            
-            const totalItems = clients.length + produits.length + (categories.length - 1) + 1; 
+            let totalItems = 4
             let processedItems = 0;
 
             const updateProgress = () => {
@@ -58,25 +152,17 @@ function DeleteAll() {
             await api_node.delete('/api/reset_shipment_order_invoice')
             updateProgress()
 
-
             setMessage('Suppression des clients...')
-            for (let i =0;i<clients.length;i++){
-            await deleteClient(clients[i].id)
+            await deleteAllClients()
             updateProgress()
-            }
 
             setMessage('Suppression des produits...')
-            for(let i=0;i<produits.length;i++){
-            await deleteProduit(produits[i].id)
+            await deleteAllProduct()
             updateProgress()
-            }
-
+    
             setMessage('Suppression des catégories...')
-            for(let i=0;i<categories.length;i++){
-            if (categories[i].id ===1) continue 
-            await deleteCategorie(categories[i].id)
+            await deleteAllCategories()
             updateProgress()
-            }
 
             setMessage('Données réinitialisées avec succès !')
         } catch (error) {

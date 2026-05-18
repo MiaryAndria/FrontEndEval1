@@ -4,7 +4,7 @@ import api_client from '../api/api_client'
 
 const normalizeSku = (str) => {
     if (!str) return ''
-    return str.toString().toLowerCase().trim().replace(/[\s_]+/g, '-')
+    return str.toString().toLowerCase().trim().replace(/[\s_\-]+/g, '')
 }
 
 class ImageImportService {
@@ -36,6 +36,7 @@ class ImageImportService {
     }
 
     async importImages(zipFile, callbacks) {
+
         const { onProgress, onMessage, onLog } = callbacks || {}
         
         if (!zipFile) return
@@ -46,15 +47,37 @@ class ImageImportService {
             const zip = await JSZip.loadAsync(zipFile)
             const imageFiles = {}
 
-            for (const [path, entry] of Object.entries(zip.files)) {
-                if (entry.dir) continue
-                if (path.includes('__MACOSX') || path.includes('._') || path.startsWith('.')) continue
-                const ext = path.split('.').pop().toLowerCase()
-                if (!['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext)) continue
-                const fileName = path.split('/').pop()
-                const sku = fileName.replace(/\.[^.]+$/, '')
-                imageFiles[sku] = { entry, fileName, ext }
+            // Fonction récursive pour lire le ZIP et les éventuels ZIP imbriqués
+            const processZipFiles = async (zipObj) => {
+                for (const [path, entry] of Object.entries(zipObj.files)) {
+                    if (entry.dir) continue
+                    if (path.includes('__MACOSX') || path.includes('._')) continue
+                    const fileName = path.split('/').pop()
+                    if (fileName.startsWith('.')) continue
+                    
+                    const ext = fileName.split('.').pop().toLowerCase()
+                    
+                    // Si on tombe sur un fichier .zip à l'intérieur du ZIP, on l'ouvre !
+                    if (ext === 'zip') {
+                        try {
+                            const nestedBlob = await entry.async('blob')
+                            const nestedZip = await JSZip.loadAsync(nestedBlob)
+                            await processZipFiles(nestedZip)
+                        } catch(e) {
+                            console.error('Erreur lors de la lecture du zip imbriqué', e)
+                        }
+                        continue
+                    }
+
+                    // Sinon, si c'est une image, on la garde
+                    if (!['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(ext)) continue
+                    
+                    const sku = fileName.replace(/\.[^.]+$/, '')
+                    imageFiles[sku] = { entry, fileName, ext }
+                }
             }
+
+            await processZipFiles(zip)
 
             const totalFiles = Object.keys(imageFiles).length
             if (onLog) onLog({ sku: '---', status: 'info', msg: `${totalFiles} images trouvées dans le ZIP` })
@@ -63,17 +86,31 @@ class ImageImportService {
                 if (onMessage) onMessage('Aucune image trouvée dans le ZIP')
                 return
             }
-
-            const response = await api_admin.get('/admin/catalog/products')
-            const products = response.data.data
-
             const productCatMap = await this.buildCategoryMap()
             console.log('[MAP] productCatMap final:', productCatMap)
+
+            if (onMessage) onMessage('Récupération des produits...')
+            let products = []
+            let page = 1
+            while (true) {
+                try {
+                    const response = await api_admin.get(`/admin/catalog/products?page=${page}&limit=200`)
+                    const data = response.data?.data || []
+                    products = products.concat(data)
+                    if (data.length < 200) break
+                    page++
+                } catch (e) {
+                    console.error('Erreur récupération produits:', e.message)
+                    break
+                }
+            }
+            console.log(`[IMPORT] ${products.length} produits récupérés au total.`)
 
             let processedCount = 0
 
             for (const [sku, imgData] of Object.entries(imageFiles)) {
                 const product = products.find(p => normalizeSku(p.sku) === normalizeSku(sku))
+
                 if (!product) {
                     if (onLog) onLog({ sku, status: 'error', msg: 'Produit introuvable' })
                     processedCount++
@@ -83,13 +120,6 @@ class ImageImportService {
 
                 const catIds = productCatMap[product.id] || []
                 console.log(`[${sku}] product.id=${product.id} → catIds:`, catIds)
-
-                // if (catIds.length === 0) {
-                //     if (onLog) onLog({ sku, status: 'error', msg: 'Aucune catégorie trouvée — upload annulé' })
-                //     processedCount++
-                //     if (onProgress) onProgress(Math.round((processedCount / totalFiles) * 100))
-                //     continue
-                // }
 
                 try {
                     const detailRes = await api_admin.get(`/admin/catalog/products/${product.id}`)
@@ -116,12 +146,6 @@ class ImageImportService {
                     formData.append('description', detail.description || detail.name)
                     formData.append('images[files][]', file)
                     formData.append('channels[]', 1)
-                    // if (detail.categories && detail.categories.length > 0) {
-                    //     detail.categories.forEach(cat => {
-                    //         const catId = cat.id !== undefined ? cat.id : cat;
-                    //         formData.append('categories[]', catId);
-                    //     });
-                    // }
                     catIds.forEach(id => formData.append('categories[]', id))
                     
                     if (detail.inventories && detail.inventories.length > 0) {

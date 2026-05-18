@@ -125,7 +125,7 @@ function DetailProduit() {
 
                     <button
                         onClick={ajouterPanier}
-                        className={`btn btn-full ${realStock > 0 ? 'btn-primary' : 'btn-outline'}`}
+                        className={`btn btn-full ${product.inventory_indices?.[0]?.qty > 0 ? 'btn-primary' : 'btn-outline'}`}
                         disabled={product.inventory_indices?.[0]?.qty === null || product.inventory_indices?.[0]?.qty === 0}
                     >Ajouter panier
                     </button>
