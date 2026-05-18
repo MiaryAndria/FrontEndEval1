@@ -31,39 +31,50 @@ function ListProduit() {
 
             {message && <p className="stock-badge">{message}</p>}
 
-            <div className="category-grid">
-                {produit.map(product => (
-                    <div key={product.id} className="card">
-                        {product.images?.[0]?.url ? (
-                            <img src={product.images[0].url} alt={product.name} />
-                        ) : (
-                            <div className="text-center" style={{ height: '200px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f9f9f9', color: '#ccc' }}>
-                                Pas d'image
-                            </div>
-                        )}
-                        <h2 className="card-title">{product.name}</h2>
-                        <p className="detail-sku">SKU : {product.sku}</p>
-                        <p className="detail-sku">Prix : {product.price} €</p>
-
-                        <div className="product-actions" style={{ display: 'flex', gap: '0.5rem', marginTop: '1.5rem' }}>
-                            <Link
-                                to={`/admin/stock/add/${product.id}`}
-                                className="btn btn-primary"
-                                style={{ flex: 1, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontSize: '0.9rem', padding: '10px' }}
-                            >
-                                 <span style={{color: 'white'}}>Modifier stock</span>
-                            </Link>
-
-                            <Link
-                                to={`/admin/stock/info/${product.id}`}
-                                className="btn btn-outline"
-                                style={{ flex: 1, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontSize: '0.9rem', padding: '10px' }}
-                            >
-                                 <span style={{color: 'var(--text-color)'}}>Bilan</span>
-                            </Link>
-                        </div>
-                    </div>
-                ))}
+            <div className="card cart-table-container">
+                <table className="cart-items">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th>Nom du Produit</th>
+                            <th>SKU</th>
+                            <th>Prix</th>
+                            <th className="text-center">Stock</th>
+                            <th className="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {produit.map(product => (
+                            <tr key={product.id}>
+                                <td className="img-cell">
+                                    {product.images?.[0]?.url ? (
+                                        <img src={product.images[0].url} alt={product.name} className="product-img" />
+                                    ) : (
+                                        <div className="no-image-placeholder">
+                                            Aucune
+                                        </div>
+                                    )}
+                                </td>
+                                <td className="product-name-cell">{product.name}</td>
+                                <td className="sku-cell">{product.sku}</td>
+                                <td>{product.price} €</td>
+                                <td className={`text-center stock-cell ${(product.inventories?.[0]?.qty || 0) > 0 ? 'stock-ok' : 'stock-empty'}`}>
+                                    {product.inventories?.[0]?.qty || 0}
+                                </td>
+                                <td className="text-center">
+                                    <div className="action-buttons">
+                                        <Link to={`/admin/stock/add/${product.id}`} className="btn btn-primary btn-sm">
+                                            Stock
+                                        </Link>
+                                        <Link to={`/admin/stock/info/${product.id}`} className="btn btn-outline btn-sm">
+                                            Bilan
+                                        </Link>
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
             </div>
 
             {produit.length === 0 && !loading && (

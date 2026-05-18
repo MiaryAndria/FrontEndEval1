@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api_client from '../../api/api_client'
 import '../css/client_style.css'
+import axios from 'axios'
+
 
 function ValiderCommande() {
     const navigate = useNavigate()
@@ -39,6 +41,15 @@ function ValiderCommande() {
             setMessage('Erreur lors du chargement')
             setLoading(false)
         }
+    }
+
+    const updateIndex = async (produitId) => {
+        try {
+            await axios.put(`http://localhost:3001/api/update/product-index/${produitId}`, {});
+        } catch (idxErr) {
+            console.error("Erreur de réindexation automatique", idxErr);
+        }
+
     }
 
     useEffect(() => {
@@ -108,6 +119,15 @@ function ValiderCommande() {
             const response = await api_client.post('/customer/checkout/save-order')
             
             if (response.data.data) {
+                try {
+                    for (const item of items) {
+                        const prodId = item.product_id || item.product?.id || item.id;
+                        await updateIndex(prodId)
+                    }
+                } catch (e) {
+                    console.error("Erreur de réindexation après achat:", e);
+                }
+
                 window.dispatchEvent(new CustomEvent('cart-updated'))
                 window.dispatchEvent(new CustomEvent('orders-updated'))
                 setMessage('Commande enregistrée avec succès !')

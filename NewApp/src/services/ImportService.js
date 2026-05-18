@@ -288,12 +288,40 @@ class ImportService {
                 short_description: description, description,
                 manage_stock: 1,
                 inventories: { [sourceId]: stock },
+                // inventories: product.inventories,
                 qty: stock,
                 in_stock: stock > 0 ? 1 : 0,
                 categories: categoryId ? [categoryId] : [],
+                // categories: product.categories,
                 channels: [chanId],
-            };
-            if (prixPromo > 0) updateData.special_price = prixPromo;
+            }; 
+            
+            // const formatDateBagisto = (dateStr) => {
+            //     if (!dateStr) return null;
+            //     const match = dateStr.match(/^(\d{2})[\/\-](\d{2})[\/\-](\d{4})$/);
+            //     if (match) return `${match[3]}-${match[2]}-${match[1]}`;
+                
+            //     return null;
+            // };
+
+            // const dateDebutRaw = this.cleanCSV(this.getVal(row, 'debut_promo'));
+            // const dateFinRaw   = this.cleanCSV(this.getVal(row, 'fin_promo'));
+
+            // let date_debut = formatDateBagisto(dateDebutRaw);
+            // let date_fin   = formatDateBagisto(dateFinRaw);
+
+            // Seulement si les DEUX dates sont présentes ET prixPromo > 0
+            if (prixPromo > 0 ) {
+                updateData.special_price      = prixPromo;
+                // updateData.special_price_from = date_debut;
+                // updateData.special_price_to   = date_fin;
+            }
+
+            // if (prixPromo > 0 && date_debut && date_fin) {
+            //     updateData.special_price      = prixPromo;
+            //     // updateData.special_price_from = date_debut;
+            //     // updateData.special_price_to   = date_fin;
+            // }
 
             try {
                 await api_admin.put(`/admin/catalog/products/${productId}`, updateData);
@@ -613,3 +641,4 @@ class ImportService {
 }
 
 export default new ImportService();
+ 

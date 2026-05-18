@@ -1,17 +1,16 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import api_admin from '../../api/api_admin'
-import Stock from '../../services/SimulationCommande'
+// import Stock from '../../services/SimulationCommande'
 import '../css/admin_style.css'
 
 function InfoProduit() {
     const { id } = useParams()
-    const navigate = useNavigate()
+    // const navigate = useNavigate()
     const [product, setProduct] = useState(null)
-    const [stockDetails, setStockDetails] = useState(null)
+    // const [stockDetails, setStockDetails] = useState(null)
     const [loading, setLoading] = useState(true)
-    const [error, setError] = useState('')
-
+    // const [error, setError] = useState('')
 
     const fetchProductDetail = async () => {
         try {
@@ -22,66 +21,67 @@ function InfoProduit() {
         }
     }
 
-    const fetchStock = async () => {
-        try {
-            return await Stock.getSingleProductStock(id);
-        } catch (err) {
-            console.error("Erreur fetch stock via simulation:", err)
-            return 0
-        }
-    }
-    const getAllOrder = async()=> {
-        try{
-            const response = await api_admin.get('/admin/sales/orders?limit=1000')
-            return response.data.data
-
-        } catch (err) {
-            console.error("Erreur fetch stock via simulation:", err)
-            return 0
-        }
-    }
+    // const fetchStock = async () => {
+    //     try {
+    //         return await Stock.getSingleProductStock(id);
+    //     } catch (err) {
+    //         console.error("Erreur fetch stock via simulation:", err)
+    //         return 0
+    //     }
+    // }
     
-    const fetchStatistics = async () => {
-        try {
+    // const getAllOrder = async()=> {
+    //     try{
+    //         const response = await api_admin.get('/admin/sales/orders?limit=1000')
+    //         return response.data.data
 
-            const allOrders = await getAllOrder()
-            let stats = { ordered: 0, invoiced: 0, shipped: 0, pending: 0 }
-            allOrders.forEach(order => {
-                if (order.status === 'canceled' || order.status === 'closed') return
-                const item = order.items.find(i => i.product_id == id)
-                if (item) {
-                    const ordered = parseInt(item.qty_ordered) || 0
-                    const invoiced = parseInt(item.qty_invoiced) || 0
-                    const shipped = parseInt(item.qty_shipped) || 0
+    //     } catch (err) {
+    //         console.error("Erreur fetch stock via simulation:", err)
+    //         return 0
+    //     }
+    // }
+    
+    // const fetchStatistics = async () => {
+    //     try {
+
+    //         const allOrders = await getAllOrder()
+    //         let stats = { ordered: 0, invoiced: 0, shipped: 0, pending: 0 }
+    //         allOrders.forEach(order => {
+    //             if (order.status === 'canceled' || order.status === 'closed') return
+    //             const item = order.items.find(i => i.product_id == id)
+    //             if (item) {
+    //                 const ordered = parseInt(item.qty_ordered) || 0
+    //                 const invoiced = parseInt(item.qty_invoiced) || 0
+    //                 const shipped = parseInt(item.qty_shipped) || 0
                     
-                    stats.ordered += ordered
-                    stats.invoiced += invoiced
-                    stats.shipped += shipped
-                    stats.pending += (ordered - shipped)
-                } 
-            })
-            return stats
-        } catch (err) {
-            console.error("Erreur statistiques:", err)
-            setError('Erreur lors du calcul des statistiques')
-            return { ordered: 0, invoiced: 0, shipped: 0, pending: 0 }
-        }
-    }
+    //                 stats.ordered += ordered
+    //                 stats.invoiced += invoiced
+    //                 stats.shipped += shipped
+    //                 stats.pending += (ordered - shipped)
+    //             } 
+    //         })
+    //         return stats
+    //     } catch (err) {
+    //         console.error("Erreur statistiques:", err)
+    //         setError('Erreur lors du calcul des statistiques')
+    //         return { ordered: 0, invoiced: 0, shipped: 0, pending: 0 }
+    //     }
+    // }
 
     const afficher = async () => {
         setLoading(true)
 
-        const stock = await fetchStock()
-        const stats = await fetchStatistics()
+        // const stock = await fetchStock()
+        // const stats = await fetchStatistics()
         await fetchProductDetail()
 
-        setStockDetails({
-            total_stock: stock ,
-            total_ordered: stats.ordered,
-            total_invoiced: stats.invoiced,
-            total_shipped: stats.shipped,
-            pending: stats.pending,
-        })
+        // setStockDetails({
+        //     total_stock: stock ,
+        //     total_ordered: stats.ordered,
+        //     total_invoiced: stats.invoiced,
+        //     total_shipped: stats.shipped,
+        //     pending: stats.pending,
+        // })
         setLoading(false)
     }
 
@@ -90,7 +90,7 @@ function InfoProduit() {
     }, [id])
 
     if (loading) return <div className="client-container">Chargement des données...</div>
-    if (error) return <div className="client-container"><p className="stock-badge">{error}</p></div>
+    // if (error) return <div className="client-container"><p className="stock-badge">{error}</p></div>
 
     return (
         <div className="client-container">
@@ -124,35 +124,51 @@ function InfoProduit() {
                             </thead>
                             <tbody>
                                 <tr style={{ borderBottom: '1px solid #f5f5f5' }}>
-                                    <td style={{ padding: '15px' }}> Stock stock (En rayon)</td>
+                                    <td style={{ padding: '15px' }}> Stock reel</td>
                                     <td style={{ padding: '15px', textAlign: 'right', fontWeight: 'bold' }}>
-                                        {stockDetails?.total_stock || 0}
+                                        {product.inventories?.[0]?.qty || 0}
                                     </td>
                                 </tr>
-                                <tr style={{ borderBottom: '1px solid #f5f5f5', color: '#666' }}>
+                                {/* <tr style={{ borderBottom: '1px solid #f5f5f5', color: '#666' }}>
                                     <td style={{ padding: '15px' }}> Total Commandé (Brut)</td>
                                     <td style={{ padding: '15px', textAlign: 'right' }}>
                                         {stockDetails?.total_ordered || 0}
                                     </td>
-                                </tr>
-                                <tr style={{ borderBottom: '1px solid #f5f5f5', color: 'var(--primary-color)' }}>
+                                </tr> */}
+                                {/* <tr style={{ borderBottom: '1px solid #f5f5f5', color: 'var(--primary-color)' }}>
                                     <td style={{ padding: '15px' }}>  Facturé (Payé)</td>
                                     <td style={{ padding: '15px', textAlign: 'right' }}>
                                         {stockDetails?.total_invoiced || 0}
                                     </td>
-                                </tr>
-                                <tr style={{ borderBottom: '1px solid #f5f5f5', color: 'var(--success-color)' }}>
+                                </tr> */}
+                                {/* <tr style={{ borderBottom: '1px solid #f5f5f5', color: 'var(--success-color)' }}>
                                     <td style={{ padding: '15px' }}>  Expédié (Vendu)</td>
                                     <td style={{ padding: '15px', textAlign: 'right' }}>
                                         {stockDetails?.total_shipped || 0}
                                     </td>
-                                </tr>
-                                <tr style={{ borderBottom: '1px solid #f5f5f5', color: 'var(--danger-color)' }}>
+                                </tr> */}
+                                {/* <tr style={{ borderBottom: '1px solid #f5f5f5', color: 'var(--danger-color)' }}>
                                     <td style={{ padding: '15px' }}> En attente (À expédier)</td>
                                     <td style={{ padding: '15px', textAlign: 'right' }}>
                                          {stockDetails?.pending || 0}
                                     </td>
+                                </tr> */}
+
+                                <tr style={{ borderBottom: '1px solid #f5f5f5', color: 'var(--danger-color)' }}>
+                                    <td style={{ padding: '15px' }}> Vendable rayon </td>
+                                    <td style={{ padding: '15px', textAlign: 'right' }}>
+                                         {product.inventory_indices?.[0]?.qty || 0}
+                                    </td>
                                 </tr>
+
+                            <Link
+                                to={`/admin/stock/add/${product.id}`}
+                                className="btn btn-outline"
+                                style={{ flex: 1, textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontSize: '0.9rem', padding: '10px' }}
+                            >
+                                 <span style={{color: 'var(--text-color)'}}>Ajouter stock</span>
+                            </Link>
+
                             </tbody>
                         </table>
                         

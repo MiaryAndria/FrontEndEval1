@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import api_admin from '../../api/api_admin'
 import '../css/admin_style.css'
 import axios from 'axios'
-import Stock from '../../services/SimulationCommande'
+// import Stock from '../../services/SimulationCommande'
 function AjouterStock() {
     const { id } = useParams()
     const navigate = useNavigate()
@@ -24,11 +24,12 @@ function AjouterStock() {
 
     }
 
-    const fetchProduit = async () => {
+    const fetchProduit = async (prodId = id) => {
         try {
-            const response = await api_admin.get(`/admin/catalog/products/${id}`)
+            const response = await api_admin.get(`/admin/catalog/products/${prodId}`)
             setProduct(response.data.data)
             setLoading(false)
+            return response.data.data;
         } catch (error) {
             setMessage('Erreur lors du chargement du produit')
             setIsError(true)
@@ -50,9 +51,10 @@ function AjouterStock() {
     let total = 0;
         try {
 
-            total = await Stock.getSingleProductStock(id);
+            const produit = await fetchProduit(id)
+            total = produit?.inventories?.[0]?.qty || 0;
         } catch (e) {
-            console.error("Erreur récupération stock via simulation", e);
+            console.error("Erreur récupération stock ", e);
         }
         
         const quantityFinal = total + quantiteAjouter  
@@ -63,7 +65,7 @@ function AjouterStock() {
             })
 
             await updateIndex(id)
-            Stock.invalidateCache(id);
+            // Stock.invalidateCache(id);
 
             setMessage('Stock mis à jour avec succès !')
             setIsError(false)

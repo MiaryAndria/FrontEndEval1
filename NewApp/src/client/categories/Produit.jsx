@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import api_client from '../../api/api_client'
-import Stock from '../../services/SimulationCommande'
+// import Stock from '../../services/SimulationCommande'
 import '../css/client_style.css'
 
 function ProduitCategorie() {
@@ -12,7 +12,7 @@ function ProduitCategorie() {
     const navigate = useNavigate()
     const { id } = useParams()
 
-    const [stocks, setStocks] = useState({})
+    // const [stocks, setStocks] = useState({})
 
     const fetchProduits = async () => {
         try {
@@ -21,26 +21,26 @@ function ProduitCategorie() {
             setProduits(prods)
             setLoading(false)
             
-            fetchStocksSimules(prods)
+            // fetchStocksSimules(prods)
         } catch (error) {
             setMessage('Erreur lors du chargement')
             setLoading(false)
         }
     }
 
-    const fetchStocksSimules = async (prods) => {
-        const newStocks = {}
-        for (const p of prods) {
-            if (p.type !== "configurable") {
-                try {
-                    newStocks[p.id] = await Stock.getSingleProductStock(p.id)
-                } catch (e) {
-                    console.error("Erreur stock simulation", e)
-                }
-            }
-        }
-        setStocks(newStocks)
-    }
+    // const fetchStocksSimules = async (prods) => {
+    //     const newStocks = {}
+    //     for (const p of prods) {
+    //         if (p.type !== "configurable") {
+    //             try {
+    //                 newStocks[p.id] = await Stock.getSingleProductStock(p.id)
+    //             } catch (e) {
+    //                 console.error("Erreur stock simulation", e)
+    //             }
+    //         }
+    //     }
+    //     setStocks(newStocks)
+    // }
 
     const ajouterPanier = async (produitId) => {
         try {
@@ -64,7 +64,8 @@ function ProduitCategorie() {
     }
 
     const handleQuantityChange = (produitId, delta) => {
-        const maxStock = stocks[produitId] !== undefined ? stocks[produitId] : 9999;
+        const produit = produits.find(p => p.id === produitId);
+        const maxStock = produit?.inventory_indices?.[0]?.qty !== undefined ? produit.inventory_indices[0].qty : 9999;
         
         setQuantities(prev => {
             const currentQty = prev[produitId] || 1;
@@ -142,11 +143,11 @@ function ProduitCategorie() {
                                 <p className="card-price">{produit.formatted_price}</p>
                             </div>
 
-                            {stocks[produit.id] === undefined ? (
+                            {produit.inventory_indices?.[0]?.qty === undefined ? (
                                 <p className="stock-badge" style={{ backgroundColor: 'var(--border-color)', color: 'var(--text-color)' }}>
                                     Vérification du stock...
                                 </p>
-                            ) : stocks[produit.id] === 0 ? (
+                            ) : produit.inventory_indices?.[0]?.qty === 0 ? (
                                 <p className="stock-badge">Rupture de stock</p>
                             ) : null}
 
@@ -155,28 +156,33 @@ function ProduitCategorie() {
                                 <div className="quantity-selector">
                                     <button onClick={() => handleQuantityChange(produit.id, -1)} disabled={currentQty <= 1}>-</button>
                                     <span>{currentQty}</span>
-                                    <button onClick={() => handleQuantityChange(produit.id, 1)} disabled={stocks[produit.id] === undefined || currentQty >= stocks[produit.id]}>+</button>
+                                    <button onClick={() => handleQuantityChange(produit.id, 1)} disabled={produit.inventory_indices?.[0]?.qty === undefined || currentQty >= produit.inventory_indices[0].qty}>+</button>
                                 </div>
 
                                 {/* Boutons Actions */}
-                            <button
-                                onClick={() => ajouterPanier(produit.id)}
-                                className={`btn btn-full ${stocks[produit.id] > 0 ? 'btn-primary' : 'btn-outline'}`}
-                                disabled={stocks[produit.id] === undefined || stocks[produit.id] === 0}
-                            >   Ajouter panier
-                            </button>
-                            <button
-                                onClick={() => addToWishlist(produit.id)}
-                                className={`btn btn-full ${stocks[produit.id] > 0 ? 'btn-primary' : 'btn-outline'}`}
-                                disabled={stocks[produit.id] === undefined || stocks[produit.id] === 0}
-                            >   Ajouter Wishlist
-                            </button>
-                                <button 
-                                    className="btn btn-outline btn-full" 
-                                    onClick={() => navigate(`/client/produit/${produit.id}`)}
-                                >
-                                    Détails
-                                </button>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    <button
+                                        onClick={() => ajouterPanier(produit.id)}
+                                        className={`btn btn-full ${produit.inventory_indices?.[0]?.qty > 0 ? 'btn-primary' : 'btn-outline'}`}
+                                        disabled={produit.inventory_indices?.[0]?.qty === undefined || produit.inventory_indices?.[0]?.qty === 0}
+                                        style={{ padding: '8px', fontSize: '0.85rem' }}
+                                    >   Ajouter panier
+                                    </button>
+                                    <button
+                                        onClick={() => addToWishlist(produit.id)}
+                                        className={`btn btn-full ${produit.inventory_indices?.[0]?.qty > 0 ? 'btn-primary' : 'btn-outline'}`}
+                                        disabled={produit.inventory_indices?.[0]?.qty === undefined || produit.inventory_indices?.[0]?.qty === 0}
+                                        style={{ padding: '8px', fontSize: '0.85rem' }}
+                                    >   Ajouter Wishlist
+                                    </button>
+                                    <button 
+                                        className="btn btn-outline btn-full" 
+                                        onClick={() => navigate(`/client/produit/${produit.id}`)}
+                                        style={{ padding: '8px', fontSize: '0.85rem' }}
+                                    >
+                                        Détails
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     )

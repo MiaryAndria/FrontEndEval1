@@ -2,13 +2,13 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import api_client from '../../api/api_client'
 import '../css/client_style.css'
-import Stock from '../../services/SimulationCommande'
+// import Stock from '../../services/SimulationCommande'
 
 function DetailProduit() {
     const [product, setProduct] = useState(null)
     const [loading, setLoading] = useState(true)
     const [quantity, setQuantity] = useState(1)
-    const [realStock, setRealStock] = useState(null)
+    // const [realStock, setRealStock] = useState(null)
     const { id } = useParams()
     const navigate = useNavigate()
 
@@ -23,14 +23,15 @@ function DetailProduit() {
         }
     }
 
-    const fetchStock = async () => {
-        try {
-            const stock = await Stock.getSingleProductStock(id)
-            setRealStock(stock)
-        } catch (error) {
-            console.error('Erreur récupération stock', error)
-        }
-    }
+
+    // const fetchStock = async () => {
+    //     try {
+    //         const stock = await Stock.getSingleProductStock(id)
+    //         setRealStock(stock)
+    //     } catch (error) {
+    //         console.error('Erreur récupération stock', error)
+    //     }
+    // }
     
     const ajouterPanier = async () => {
         try {
@@ -55,7 +56,7 @@ function DetailProduit() {
 
     useEffect(() => {
         fetchDetailProduit()
-        fetchStock()
+        // fetchStock()
     }, [id])
 
     if (loading) return <div className="client-container">Chargement...</div>
@@ -93,11 +94,11 @@ function DetailProduit() {
                         <div dangerouslySetInnerHTML={{ __html: product.short_description }} />
                     </div>
 
-                    {realStock === null ? (
+                    {product.inventory_indices?.[0]?.qty === null ? (
                         <p className="stock-badge" style={{ backgroundColor: 'var(--border-color)', color: 'var(--text-color)' }}>
                             Vérification du stock...
                         </p>
-                    ) : realStock === 0 ? (
+                    ) : product.inventory_indices?.[0]?.qty === 0 ? (
                         <p className="stock-badge">Rupture de stock</p>
                     ) : null}
                     
@@ -111,21 +112,21 @@ function DetailProduit() {
                             >-</button>
                             <span>{quantity}</span>
                             <button 
-                                onClick={() => setQuantity(Math.min(realStock || 0, quantity + 1))}
-                                disabled={realStock === null || quantity >= realStock}
+                                onClick={() => setQuantity(Math.min(product.inventory_indices?.[0]?.qty || 0, quantity + 1))}
+                                disabled={product.inventory_indices?.[0]?.qty === null || quantity >= product.inventory_indices?.[0]?.qty}
                             >+</button>
                         </div>
                     </div>
 
                     <div>
                         <h1>Quantité en stock</h1>
-                        <p>{realStock === null ? 'Calcul...' : realStock}</p>
+                        <p>{product.inventory_indices?.[0]?.qty === null ? 'Calcul...' : product.inventory_indices?.[0]?.qty}</p>
                     </div>
 
                     <button
                         onClick={ajouterPanier}
                         className={`btn btn-full ${realStock > 0 ? 'btn-primary' : 'btn-outline'}`}
-                        disabled={realStock === null || realStock === 0}
+                        disabled={product.inventory_indices?.[0]?.qty === null || product.inventory_indices?.[0]?.qty === 0}
                     >Ajouter panier
                     </button>
                 </div>

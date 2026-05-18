@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import api_admin from '../../api/api_admin'
 import axios from 'axios'
-import Stock from '../../services/SimulationCommande'
+// import Stock from '../../services/SimulationCommande'
 import '../css/admin_style.css'
 
 function CommandeAdmin() {
@@ -54,7 +54,7 @@ function CommandeAdmin() {
             try {
                 for (const item of order.items) {
                     await updateIndex(item.product_id)
-                    Stock.invalidateCache(item.product_id);
+                    // Stock.invalidateCache(item.product_id);
                 }
             } catch (idxErr) {
                 console.error("Erreur réindexation", idxErr);
@@ -85,7 +85,7 @@ function CommandeAdmin() {
             try {
                 for (const item of order.items) {
                     await updateIndex(item.product_id)
-                    Stock.invalidateCache(item.product_id);
+                    // Stock.invalidateCache(item.product_id);
                 }
             } catch (idxErr) {
                 console.error("Erreur réindexation", idxErr);

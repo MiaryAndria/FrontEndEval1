@@ -2,15 +2,15 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import api_client from '../../api/api_client'
 import '../css/client_style.css'
-import axios from 'axios'
-import Stock from '../../services/SimulationCommande'
+// import axios from 'axios'
+// import Stock from '../../services/SimulationCommande'
 
 function Panier() {
     const navigate = useNavigate()
     const [panier, setPanier] = useState(null)
     const [loading, setLoading] = useState(true)
     const [quantities, setQuantities] = useState({})
-    const [stocks, setStocks] = useState({})
+    // const [stocks, setStocks] = useState({})
     const [message, setMessage] = useState('')
 
     const fetchPanier = async () => {
@@ -18,9 +18,9 @@ function Panier() {
             const response = await api_client.get('/customer/cart')
             const cartData = response.data.data
             setPanier(cartData)
-            if (cartData?.items) {
-                await fetchStocksPanier(cartData.items)
-            }
+            // if (cartData?.items) {
+            //     await fetchStocksPanier(cartData.items)
+            // }
             setLoading(false)
         } catch (error) {
             setMessage('Erreur lors du chargement du panier')
@@ -28,21 +28,21 @@ function Panier() {
         }
     }
 
-    const fetchStocksPanier = async (items) => {
-        const stocksObj = {}
-        const itemList = Array.isArray(items) ? items : [items]
-        for (const item of itemList) {
-            try {
-                const productId = item.product_id || item.product?.id;
-                if (!productId) continue;
-                const qty = await Stock.getSingleProductStock(productId);
-                stocksObj[productId] = qty;
-            } catch (e) {
-                console.error('Erreur stock via simulation pour produit', item, e)
-            }
-        }
-        setStocks(stocksObj)
-    }
+    // const fetchStocksPanier = async (items) => {
+    //     const stocksObj = {}
+    //     const itemList = Array.isArray(items) ? items : [items]
+    //     for (const item of itemList) {
+    //         try {
+    //             const productId = item.product_id || item.product?.id;
+    //             if (!productId) continue;
+    //             const qty = await Stock.getSingleProductStock(productId);
+    //             stocksObj[productId] = qty;
+    //         } catch (e) {
+    //             console.error('Erreur stock via simulation pour produit', item, e)
+    //         }
+    //     }
+    //     setStocks(stocksObj)
+    // }
 
     const updateCartItem = async (itemId, quantity) => {
         try {
@@ -73,9 +73,10 @@ function Panier() {
 
     const handleQuantityChange = (item, delta) => {
         const itemId = item.id
-        const productId = item.product_id || item.product?.id;
+        // const productId = item.product_id || item.product?.id;
         const currentQty = quantities[itemId] || item.quantity
-        const maxStock = stocks[productId] || 0
+        const maxStock = item.product?.inventory_indices?.[0]?.qty || 0 
+        // const maxStock = stocks[productId] || 0
 
         let newQty = currentQty + delta
 
@@ -126,7 +127,7 @@ function Panier() {
             )}
 
             <div className="detail-layout">
-                {/* ITEMS DU PANIER */}
+
                 <div className="cart-items">
                     {items.map(item => (
                         <div key={item.id} className="card cart-item-card">
@@ -157,7 +158,6 @@ function Panier() {
                     ))}
                 </div>
 
-                {/* RESUME PANIER */}
                 <div className="cart-summary">
                     <div className="card">
                         <h2 className="summary-divider">Résumé</h2>
